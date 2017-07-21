@@ -12,6 +12,7 @@ import (
 	"strings"
 	"database/sql"
 	"sort"
+	"github.com/lib/pq"
 )
 
 type Record struct {
@@ -154,8 +155,7 @@ func writeHeaderRow(data []string, sheet *xlsx.Sheet) {
 // export the subject counts
 func exportSubjectCounts(wbk *xlsx.File, db *sqlx.DB, pattern string) {
 	tab_name := "Subject Counts"
-	headers := []string{"Rave URL", "Project Name", "Subject Count"}
-	// TODO: Add the Date of the Subject Count
+	headers := []string{"Rave URL", "Project Name", "Subject Count", "Date Updated"}
 	q := `WITH counts AS (SELECT
                   project_id         AS project_id,
                   MAX(subject_count) AS subject_count
@@ -171,12 +171,15 @@ SELECT
     THEN rave_url.alternate_url
   ELSE rave_url.url END AS URL,
   project.project_name,
-  counts.subject_count
+  counts.subject_count,
+  refresh_date.refresh_date
 FROM counts
   JOIN project
     ON project.id = counts.project_id
   JOIN rave_url
     ON project.url_id = rave_url.id
+  LEFT JOIN refresh_date
+    ON refresh_date.project_id = project.id
 ORDER BY  rave_url.url, project.project_name
 `
 	rows, err := db.Queryx(q, pattern)
@@ -197,10 +200,12 @@ ORDER BY  rave_url.url, project.project_name
 		var study_url string
 		var project_name string
 		var subject_count int
-		err := rows.Scan(&study_url, &project_name, &subject_count)
+		var refresh_date pq.NullTime
+		err := rows.Scan(&study_url, &project_name, &subject_count, &refresh_date)
 		if err != nil {
 			log.Fatal("Error processing data for subject counts ", err)
 		}
+
 		var cell *xlsx.Cell
 		// Rows
 		row := sheet.AddRow()
@@ -210,7 +215,32 @@ ORDER BY  rave_url.url, project.project_name
 		cell.SetString(project_name)
 		cell = row.AddCell()
 		cell.SetInt(subject_count)
+		cell = row.AddCell()
+		if refresh_date.Valid {
+			cell.SetDateTime(refresh_date.Time)
+		} else {
+			cell.SetString("-")
+		}
+
 	}
+}
+
+// Write a Project Version to the Sheet
+func writeProjectVersion(prj ProjectVersion, row *xlsx.Row){
+	var cell *xlsx.Cell
+	// Study URL
+	cell = row.AddCell()
+	cell.Value = prj.URL
+	// Project Name
+	cell = row.AddCell()
+	cell.Value = prj.ProjectName
+	// CRF Version
+	cell = row.AddCell()
+	cell.Value = prj.CRFVersionID
+	// Active Edits
+	writeMetrics(prj.ActiveEditsOnly, row)
+	// Inactive Edits
+	writeMetrics(prj.InactiveEditsOnly, row)
 }
 
 func writeMetricsRow(rec Record, row *xlsx.Row) {
@@ -291,22 +321,143 @@ func writeMetricsRow(rec Record, row *xlsx.Row) {
 	//cell.SetInt(rec.TotalProgEditsFiredWithNoChange)
 }
 
+func writeMetrics(rec Record, row *xlsx.Row) {
+	var cell *xlsx.Cell
+	// Total Edits (fld)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalFieldEdits)
+	// Total Edits Fired (fld)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalFieldEditsFired)
+	// Total Edits Unfired (fld)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalFieldEdits - rec.TotalFieldEditsFired)
+	// %ge Edits Fired (fld)
+	cell = row.AddCell()
+	if rec.TotalFieldEdits == 0 {
+		cell.SetFloat(0.0)
+	} else {
+		cell.SetFloatWithFormat(float64(rec.TotalFieldEditsFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
+	}
+	// %ge Edits Unfired (fld)
+	cell = row.AddCell()
+	if rec.TotalFieldEdits == 0 {
+		cell.SetFloat(0.0)
+	} else {
+		cell.SetFloatWithFormat(float64(rec.TotalFieldEdits-rec.TotalFieldEditsFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
+	}
+	// Total Edits (prg)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalProgEdits)
+	// Total Edits With OpenQuery (prg)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalProgEditsWithOpenQuery)
+	// Total Edits Fired (prg)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalProgWithOpenQueryFired)
+	// Total Edits Unfired (prg)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalProgEditsWithOpenQuery - rec.TotalProgWithOpenQueryFired)
+	// %ge Edits Fired (prg)
+	cell = row.AddCell()
+	if rec.TotalProgEditsWithOpenQuery == 0 {
+		cell.SetFloat(0.0)
+	} else {
+		cell.SetFloatWithFormat(float64(rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
+	}
+	// %ge Edits Unfired (prg)
+	cell = row.AddCell()
+	if rec.TotalProgEditsWithOpenQuery == 0 {
+		cell.SetFloat(0.0)
+	} else {
+		cell.SetFloatWithFormat(float64(rec.TotalProgEditsWithOpenQuery-rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
+	}
+	// Total Queries (fld)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalFieldQueries)
+	// Total Queries (prg)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalProgQueries)
+	// Total Queries With OpenQuery (prg)
+	cell = row.AddCell()
+	cell.SetInt(rec.TotalProgQueriesWithOpenQuery)
+}
+
 // write study metrics
 func writeStudyMetrics(data map[string][]ProjectVersion, wbk *xlsx.File) {
+	headers := []string{"Study URL",
+						"Project Name",
+						"CRF Version",
+						"Active - Total Edits (fld)",
+						"Active - Total Edits Fired (fld)",
+		"Active - Total Edits Unfired (fld)",
+		"Active - %ge Edits Fired (fld)",
+						"Active - %ge Edits Unfired (fld)",
+						"Active - Total Edits (prg)",
+						"Active - Total Edits With OpenQuery (prg)",
+						"Active - Total Edits Fired (prg)",
+		"Active - Total Edits Unfired (prg)",
+		"Active - %ge Edits Fired (prg)",
+						"Active - %ge Edits Unfired (prg)",
+						"Active - Total Queries (fld)",
+						"Active - Total Queries (prg)",
+						"Active - Total Queries With OpenQuery (prg)",
+						"Inactive - Total Edits (fld)",
+						"Inactive - Total Edits Fired (fld)",
+		"Inactive - Total Edits Unfired (fld)",
+		"Inactive - %ge Edits Fired (fld)",
+						"Inactive - %ge Edits Unfired (fld)",
+						"Inactive - Total Edits (prg)",
+						"Inactive - Total Edits With OpenQuery (prg)",
+						"Inactive - Total Edits Fired (prg)",
+		"Inactive - Total Edits Unfired (prg)",
+		"Inactive - %ge Edits Fired (prg)",
+						"Inactive - %ge Edits Unfired (prg)",
+						"Inactive - Total Queries (fld)",
+						"Inactive - Total Queries (prg)",
+						"Inactive - Total Queries With OpenQuery (prg)",
+		//"Total Edits Fired With No Change (fld)",
+		//"Total Edits Fired With No Change (prg)"
+	}
+	var urls []string
+	for k := range data {
+		urls = append(urls, k)
+	}
+	sort.Strings(urls)
+	for _, url := range urls {
+
+		// create the sheet
+		sheet, created := getOrAddSheet(wbk, url)
+		if created {
+			// Add the headers
+			writeHeaderRow(headers, sheet)
+		}
+		//log.Println("Created Sheet for URL ", url)
+
+		for _, project_version := range data[url] {
+			// Add the row for Checks
+			row := sheet.AddRow()
+			writeProjectVersion(project_version, row)
+		}
+	}
+}
+
+// write study metrics
+func writeStudyMetricsPartitioned(data map[string][]ProjectVersion, wbk *xlsx.File) {
 	headers := []string{"Study URL",
 						"Project Name",
 						"CRF Version",
 						"Status",
 						"Total Edits (fld)",
 						"Total Edits Fired (fld)",
-						"%ge Edits Fired (fld)",
-						"Total Edits Unfired (fld)",
+		"Total Edits Unfired (fld)",
+		"%ge Edits Fired (fld)",
 						"%ge Edits Unfired (fld)",
 						"Total Edits (prg)",
 						"Total Edits With OpenQuery (prg)",
 						"Total Edits Fired (prg)",
-						"%ge Edits Fired (prg)",
-						"Total Edits Unfired (prg)",
+		"Total Edits Unfired (prg)",
+		"%ge Edits Fired (prg)",
 						"%ge Edits Unfired (prg)",
 						"Total Queries (fld)",
 						"Total Queries (prg)",
@@ -414,7 +565,7 @@ ORDER BY url, project_name, crf_version_id, check_status;
 		if err := rows.StructScan(&r); err != nil {
 			log.Fatal(err)
 		}
-		// First Rune
+		// First Row
 		if project_version == nil {
 			project_version = new(ProjectVersion)
 			project_version.URL = r.URL
@@ -437,7 +588,14 @@ ORDER BY url, project_name, crf_version_id, check_status;
 		} else {
 			project_version.ActiveEditsOnly = r
 		}
+		//log.Println("Generated",r.CheckStatus,"for",r.ProjectName,"(",r.URL,")")
 	}
+	// missing last loop
+	prefix := strings.Split(project_version.URL, ".")[0]
+	project_version = fixUpNullValues(project_version)
+	project_version = calculateInactiveCounts(project_version)
+	urls[prefix] = append(urls[prefix], *project_version)
+	// Log output
 	log.Println("Generated metrics for ", len(urls), "URLs")
 	writeStudyMetrics(urls, wbk)
 }
@@ -527,6 +685,17 @@ WHERE total_count = 0;
 	}
 }
 
+func doesPatternMatch(pattern string, db *sqlx.DB)(bool){
+	q := `SELECT COUNT(*) FROM rave_url
+	WHERE rave_url.url LIKE '%' || $1 || '%' OR rave_url.alternate_url LIKE '%' || $1 || '%'`
+	var count int
+	err := db.Get(&count, q, pattern)
+	if err == nil {
+		return count != 0
+	}
+	return false
+}
+
 type arrayFlags []string
 
 func (i *arrayFlags) String() string {
@@ -563,6 +732,10 @@ func main() {
 	}
 	workbook := xlsx.NewFile()
 	for _, url_pattern := range patternsArray {
+		if ! doesPatternMatch(url_pattern, dbConn){
+			log.Println("No matching URLs for", url_pattern)
+			continue
+		}
 		log.Println("Processing URL Pattern ", url_pattern)
 		log.Printf("Inserting Subject Counts")
 		exportSubjectCounts(workbook, dbConn, url_pattern)
