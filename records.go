@@ -115,7 +115,7 @@ func (pv *LastProjectVersion) calculatePercentages() {
 	}
 	if pv.ProgTotalFired > 0 {
 		pv.ProgPercentageChanged = float64(pv.ProgChanged) / float64(pv.ProgTotalFired)
-		pv.ProgPercentageNotChanged = float64(pv.ProgChanged) / float64(pv.ProgTotalFired)
+		pv.ProgPercentageNotChanged = float64(pv.ProgNotChanged) / float64(pv.ProgTotalFired)
 	}
 }
 
