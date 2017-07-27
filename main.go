@@ -26,11 +26,13 @@ func (i *arrayFlags) Set(value string) error {
 func main() {
 	var patternsArray arrayFlags
 	flag.Var(&patternsArray, "pattern", "Supply the URL patterns")
+	rave_url := flag.String("url", "", "Specific Rave URL")
 	host_name := flag.String("dbhost", "localhost", "Database Host")
 	db_name := flag.String("dbname", "editsfive", "Database Name")
 	db_user := flag.String("user", "edits", "Database User")
 	db_pass := flag.String("password", "apple01", "Database Password")
 	file_name := flag.String("output", "report", "Output File Name")
+	threshold := flag.Int("threshold", 10, "Threshold for Reporting")
 	flag.Parse()
 	if len(patternsArray) == 0 {
 		log.Fatal("Need to specify the patterns")
@@ -47,6 +49,9 @@ func main() {
 		log.Fatal(err)
 	}
 	workbook := xlsx.NewFile()
+	if *rave_url != "" {
+		patternsArray.Set(*rave_url)
+	}
 	for _, url_pattern := range patternsArray {
 		if !doesPatternMatch(url_pattern, dbConn) {
 			log.Println("No matching URLs for", url_pattern)
@@ -62,6 +67,8 @@ func main() {
 		// Get the Study Metrics
 		log.Println("Retrieving URL Metrics")
 		study_metrics := getStudyMetrics(dbConn, url_pattern)
+		// Get the LastVersionData
+		last_versions := getURLLastVersionData(dbConn, study_metrics)
 		// Subject Counts
 		log.Println("Writing Subject Counts")
 		writeSubjectCounts(subject_counts, workbook)
@@ -71,6 +78,9 @@ func main() {
 		// Study Metrics
 		log.Println("Writing Study Metrics")
 		writeStudyMetrics(study_metrics, workbook)
+		// Last Project Versions
+		log.Println("Writing Last Project Version Data")
+		writeLastProjectVersions(last_versions, *threshold, workbook)
 	}
 	// make up the prefix using the range of patterns
 	prefix := strings.Join(patternsArray, "_")

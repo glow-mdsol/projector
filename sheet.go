@@ -4,6 +4,8 @@ import (
 	"github.com/tealeg/xlsx"
 	"log"
 	"sort"
+	"fmt"
+	"strings"
 )
 
 func getOrAddSheet(wbk *xlsx.File, name string) (*xlsx.Sheet, bool) {
@@ -25,15 +27,11 @@ func writeHeaderRow(data []string, sheet *xlsx.Sheet) {
 	boldface.Bold = true
 	centerHalign := *xlsx.DefaultAlignment()
 	centerHalign.Horizontal = "center"
-	align := xlsx.Alignment{
-		ShrinkToFit: true,
-	}
 	titleFace := xlsx.NewStyle()
 	titleFace.Font = boldface
 	titleFace.Alignment = centerHalign
 	titleFace.ApplyAlignment = true
 	titleFace.ApplyFont = true
-	titleFace.Alignment = align
 	row := sheet.AddRow()
 	for idx, datum := range data {
 		cell := row.AddCell()
@@ -447,4 +445,172 @@ func writeUselessEdits(edits []UnusedEdit, wbk *xlsx.File) {
 	sheet.SetColWidth(0, 0, float64(url_length))
 	sheet.SetColWidth(1, 1, float64(project_length))
 	sheet.SetColWidth(2, 2, float64(check_length))
+}
+
+// write out the data for the LastProjectVersion
+func writeLastProjectVersions(lpv map[string][]LastProjectVersion, threshold int,  wbk *xlsx.File){
+	for url, lpvs := range lpv{
+		writeLastProjectVersion(url, threshold, lpvs, wbk)
+	}
+}
+
+// write the Subject Counts
+func writeLastProjectVersion(url string, threshold int, project_versions []LastProjectVersion, wbk *xlsx.File) {
+	tab_name := fmt.Sprintf("Last Versions - %s", url)
+	headers := []string{"Project Name", "CRF Version ID", "Subject Count",
+		"Total Checks",
+		"Total Checks (Field)",
+		"Total Checks Fired (Field)", "Total Checks Not Fired (Field)",
+		"%ge Checks Fired (Field)", "%ge Checks Not Fired (Field)",
+		"Checks with Change (Field)", "Checks with No Change (Field)",
+		"%ge Checks with Change (Field)", "%ge Checks with No Change (Field)",
+		"Total Checks (Prog)",
+		"Total Checks Fired (Prog)", "Total Checks Not Fired (Prog)",
+		"%ge Checks Fired (Prog)", "%ge Checks Not Fired (Prog)",
+		"Checks with Change (Prog)", "Checks with No Change (Prog)",
+		"%ge Checks with Change (Prog)", "%ge Checks with No Change (Prog)",
+	}
+
+	// create the sheet
+	sheet, created := getOrAddSheet(wbk, tab_name)
+	if created {
+		// Add the headers
+		writeHeaderRow(headers, sheet)
+	}
+	for _, last_project_version := range project_versions {
+		var cell *xlsx.Cell
+		// Rows
+		row := sheet.AddRow()
+		// Project Name
+		cell = row.AddCell()
+		cell.SetString(last_project_version.ProjectName)
+		// CRF Version ID
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.CRFVersionID)
+		// Subject Count
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.SubjectCount)
+		// Total Checks
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.TotalCount)
+		// Total Field Checks
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldTotal)
+		// Total Field Checks Fired
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldTotalFired)
+		// Total Field Checks Not Fired
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldTotalNotFired)
+		// Percentage Field Checks Fired
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.FieldPercentageFired, "0.00%")
+		// Percentage Field Checks Not Fired
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.FieldPercentageNotFired, "0.00%")
+		// Total Field Checks with Change
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldChanged)
+		// Total Field Checks with No Change
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldNotChanged)
+		// Percentage Field Checks Leading to Data Change
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.FieldPercentageChanged, "0.00%")
+		// Percentage Field Checks Leading to No Data Change
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.FieldPercentageNotChanged, "0.00%")
+		// Total Prog Checks
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgTotal)
+		// Total Prog Checks Fired
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgTotalFired)
+		// Total Prog Checks Not Fired
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgTotalNotFired)
+		// Percentage Prog Checks Fired
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.ProgPercentageFired, "0.00%")
+		// Percentage Prog Checks Not Fired
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.ProgPercentageNotFired, "0.00%")
+		// Total Prog Checks with Change
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgChanged)
+		// Total Prog Checks with No Change
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgNotChanged)
+		// Percentage Prog Checks Leading to Data Change
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.ProgPercentageChanged, "0.00%")
+		// Percentage Prog Checks Leading to No Data Change
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.ProgPercentageNotChanged, "0.00%")
+	}
+	// functions for calculation
+	threshold_function := fmt.Sprintf("AVERAGEIF(OFFSET($C$2,0,0,ROW()-2,1),\">%d\",OFFSET(INDIRECT(ADDRESS(2,COLUMN())),0,0,ROW()-2,1))", threshold)
+	all_function := "AVERAGE(OFFSET(INDIRECT(ADDRESS(2,COLUMN())),0,0,ROW()-3,1))"
+	// Add the Summary Rows
+	row := sheet.AddRow()
+	for i := 0; i < 22; i++ {
+		cell := row.AddCell()
+		text := ""
+		if i == 0{
+			text = "Category"
+		} else if i == 1 {
+			text = "Aggregate"
+		} else if i == 2 {
+			text ="Count"
+		} else if i >= 3 {
+			text = headers[i]
+		}
+		cell.SetString(text)
+	}
+
+	// Threshold  Data
+	row = sheet.AddRow()
+	for i := 0; i < 22; i++ {
+		cell := row.AddCell()
+		if i == 0{
+			cell.SetString(fmt.Sprintf("> %d", threshold))
+		} else if i == 1 {
+			cell.SetString("AVERAGE")
+		} else if i == 2 {
+			cell.SetFormula(fmt.Sprintf("COUNTIF(OFFSET(C$2,0,0,ROW()-2,1),\">%d\")", threshold))
+		} else if i >= 3 {
+			cell.SetFormula(threshold_function)
+			if strings.Contains(headers[i], "%ge"){
+				cell.NumFmt = "0.00%"
+			} else {
+				cell.NumFmt = "0.00"
+			}
+		} else {
+			cell.SetString("")
+		}
+	}
+	// Threshold Data
+	row = sheet.AddRow()
+	for i := 0; i < 22; i++ {
+		cell := row.AddCell()
+		if i == 0{
+			cell.SetString("ALL")
+		} else if i == 1 {
+			cell.SetString("AVERAGE")
+		} else if i == 2 {
+			cell.SetFormula("COUNTA(OFFSET(C$2,0,0,ROW()-3,1))")
+		} else if i >= 3 {
+			cell.SetFormula(all_function)
+			if strings.Contains(headers[i], "%ge"){
+				cell.NumFmt = "0.00%"
+			} else {
+				cell.NumFmt = "0.00"
+			}
+		} else {
+			cell.SetString("")
+		}
+
+	}
+
+
 }

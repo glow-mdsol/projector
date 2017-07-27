@@ -106,12 +106,13 @@ WHERE total_count = 0;
 	return unusedEdits
 }
 
-// export the study metrics
+// export the study metrics, this is a map with a key matching the URL, and the projects as values
 func getStudyMetrics(db *sqlx.DB, pattern string) (map[string][]ProjectVersion) {
 	q := `WITH AllData AS (SELECT
                    CASE WHEN rave_url.url LIKE '%hdcvc%'
                      THEN rave_url.alternate_url
                    ELSE rave_url.url END AS URL,
+                   rave_url.id AS url_id,
                    project.project_name,
                    crf_version_id,
                    'ACTIVEONLY'          AS check_status,
@@ -138,6 +139,7 @@ func getStudyMetrics(db *sqlx.DB, pattern string) (map[string][]ProjectVersion) 
                    CASE WHEN rave_url.url LIKE '%hdcvc%'
                      THEN rave_url.alternate_url
                    ELSE rave_url.url END AS URL,
+                   rave_url.id AS url_id,
                    project.project_name,
                    crf_version_id,
                    'ALLCHECKS'           AS check_status,
@@ -170,6 +172,7 @@ func getStudyMetrics(db *sqlx.DB, pattern string) (map[string][]ProjectVersion) 
                     GROUP BY project_name)
 SELECT
   AllData.URL,
+  AllData.url_id,
   AllData.project_name,
   AllData.crf_version_id,
   CASE WHEN AllData.crf_version_id = SubjectData.last_version
@@ -239,4 +242,61 @@ ORDER BY URL, project_name, crf_version_id, check_status`
 	// Log output
 	log.Println("Generated metrics for ", len(urls), "URLs")
 	return urls
+}
+
+// Get the last version dataset for each of the URLs
+func getURLLastVersionData(db *sqlx.DB, urls map[string][]ProjectVersion)(map[string][]LastProjectVersion){
+	last := make(map[string][]LastProjectVersion)
+	for url, versions := range urls{
+		last[url] = getLastVersionDataset(db, versions[0].URLID)
+	}
+	return last
+}
+
+// get the last version dataset
+func getLastVersionDataset(db *sqlx.DB, url_id int) ([]LastProjectVersion){
+	q := `WITH SET AS (SELECT
+  project_last_version.project_id,
+  COUNT(*) AS total_count,
+  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' THEN 1 ELSE 0 END) AS fld_total,
+  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND query_count > 0 THEN 1 ELSE 0 END) AS fld_total_fired,
+  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND query_count = 0 THEN 1 ELSE 0 END) AS fld_total_not_fired,
+  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND change_count = 0 THEN 1 ELSE 0 END) AS fld_no_change_count,
+  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND change_count > 0 THEN 1 ELSE 0 END) AS fld_change_count,
+  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' THEN 1 ELSE 0 END) AS prg_total,
+  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND query_count > 0 THEN 1 ELSE 0 END) AS prg_total_fired,
+  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND query_count = 0 THEN 1 ELSE 0 END) AS prg_total_not_fired,
+  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND change_count = 0 THEN 1 ELSE 0 END) AS prg_no_change_count,
+  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND change_count > 0 THEN 1 ELSE 0 END) AS prg_change_count
+FROM edit_check
+  INNER JOIN project_last_version
+    ON edit_check.project_id = project_last_version.project_id AND
+       edit_check.crf_version_id = project_last_version.crf_version_id
+WHERE url_id = $1 AND actions LIKE '%OpenQuery%' AND is_active = 1
+GROUP BY project_last_version.project_id
+)
+SELECT project.project_name,
+  project_last_version.crf_version_id,
+  project_last_version.subject_count,
+  SET.* FROM SET
+  JOIN project ON project_id = project.id
+  JOIN project_last_version ON project.id = project_last_version.project_id
+ORDER BY project.project_name;
+`
+	rows, err := db.Queryx(q, url_id)
+	if err != nil {
+		log.Fatal("Query failed: ", err)
+	}
+	defer rows.Close()
+	project_versions := []LastProjectVersion{}
+	for rows.Next() {
+		var r LastProjectVersion
+		if err := rows.StructScan(&r); err != nil {
+			log.Fatal(err)
+		}
+		// Add the percentages
+		r.calculatePercentages()
+		project_versions = append(project_versions, r)
+	}
+	return project_versions
 }
