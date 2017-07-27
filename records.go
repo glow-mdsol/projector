@@ -22,9 +22,10 @@ type SubjectCount struct {
 
 type Record struct {
 	URL                               string
+	URLID                             int            `db:"url_id"`
 	ProjectName                       string        `db:"project_name"`
 	CRFVersionID                      string        `db:"crf_version_id"`
-	LastVersion                       bool        	`db:"last_version"`
+	LastVersion                       bool            `db:"last_version"`
 	SubjectCount                      sql.NullInt64 `db:"subject_count"`
 	CheckStatus                       string        `db:"check_status"`
 	RawTotalFieldEdits                sql.NullInt64 `db:"total_edits_fld"`
@@ -47,12 +48,13 @@ type Record struct {
 	RawTotalProgWithOpenQueryFired    sql.NullInt64 `db:"total_fired_query_prg"`
 	TotalFieldWithOpenQueryFired      int
 	TotalProgWithOpenQueryFired       int
-	TotalFieldEditsFiredWithNoChange  int 			`db:"fired_no_change_fld"`
-	TotalProgEditsFiredWithNoChange   int 			`db:"fired_no_change_prg"`
+	TotalFieldEditsFiredWithNoChange  int            `db:"fired_no_change_fld"`
+	TotalProgEditsFiredWithNoChange   int            `db:"fired_no_change_prg"`
 }
 
 type ProjectVersion struct {
 	URL               string
+	URLID             int
 	ProjectName       string
 	CRFVersionID      string
 	AllEdits          Record
@@ -62,6 +64,60 @@ type ProjectVersion struct {
 	SubjectCount      int
 }
 
+type LastProjectVersion struct {
+	ProjectName               string `db:"project_name"`
+	ProjectID                 int    `db:"project_id"`
+	CRFVersionID              int    `db:"crf_version_id"`
+	SubjectCount              int    `db:"subject_count"`
+	TotalCount                int    `db:"total_count"`
+	FieldTotal                int    `db:"fld_total"`
+	FieldTotalFired           int    `db:"fld_total_fired"`
+	FieldTotalNotFired        int    `db:"fld_total_not_fired"`
+	FieldNotChanged           int    `db:"fld_no_change_count"`
+	FieldChanged              int    `db:"fld_change_count"`
+	ProgTotal                 int    `db:"prg_total"`
+	ProgTotalFired            int    `db:"prg_total_fired"`
+	ProgTotalNotFired         int    `db:"prg_total_not_fired"`
+	ProgNotChanged            int    `db:"prg_no_change_count"`
+	ProgChanged               int    `db:"prg_change_count"`
+	FieldPercentageFired      float64
+	FieldPercentageNotFired   float64
+	FieldPercentageChanged    float64
+	FieldPercentageNotChanged float64
+	ProgPercentageFired       float64
+	ProgPercentageNotFired    float64
+	ProgPercentageChanged     float64
+	ProgPercentageNotChanged  float64
+}
+
+func (pv *LastProjectVersion) calculatePercentages() {
+	// Gate the counts
+	pv.FieldPercentageFired = 0.0
+	pv.FieldPercentageNotFired = 0.0
+	pv.FieldPercentageChanged = 0.0
+	pv.FieldPercentageNotChanged = 0.0
+	pv.ProgPercentageFired = 0.0
+	pv.ProgPercentageNotFired = 0.0
+	pv.ProgPercentageChanged = 0.0
+	pv.ProgPercentageNotChanged = 0.0
+
+	if pv.FieldTotal > 0 {
+		pv.FieldPercentageFired = float64(pv.FieldTotalFired) / float64(pv.FieldTotal)
+		pv.FieldPercentageNotFired = float64(pv.FieldTotalNotFired) / float64(pv.FieldTotal)
+	}
+	if pv.FieldTotalFired > 0 {
+		pv.FieldPercentageChanged = float64(pv.FieldChanged) / float64(pv.FieldTotalFired)
+		pv.FieldPercentageNotChanged = float64(pv.FieldChanged) / float64(pv.FieldTotalFired)
+	}
+	if pv.ProgTotal > 0 {
+		pv.ProgPercentageFired = float64(pv.ProgTotalFired) / float64(pv.ProgTotal)
+		pv.ProgPercentageNotFired = float64(pv.ProgTotalNotFired) / float64(pv.ProgTotal)
+	}
+	if pv.ProgTotalFired > 0 {
+		pv.ProgPercentageChanged = float64(pv.ProgChanged) / float64(pv.ProgTotalFired)
+		pv.ProgPercentageNotChanged = float64(pv.ProgChanged) / float64(pv.ProgTotalFired)
+	}
+}
 
 func calculateInactiveCounts(pv *ProjectVersion) *ProjectVersion {
 	rec := new(Record)
@@ -88,7 +144,7 @@ func calculateInactiveCounts(pv *ProjectVersion) *ProjectVersion {
 	return pv
 }
 
-func (pv *ProjectVersion) calculateInactiveCounts(){
+func (pv *ProjectVersion) calculateInactiveCounts() {
 	rec := new(Record)
 	rec.URL = pv.URL
 	rec.ProjectName = pv.ProjectName
@@ -162,18 +218,19 @@ func fixUpNullValues(pv *ProjectVersion) *ProjectVersion {
 	return pv
 }
 
-func (pv *ProjectVersion) fixUpNullValues(){
+func (pv *ProjectVersion) fixUpNullValues() {
 	pv.ActiveEditsOnly = fixUpRecord(pv.ActiveEditsOnly)
 	pv.AllEdits = fixUpRecord(pv.AllEdits)
 }
 
-func createProjectVersion(r Record)(*ProjectVersion){
+func createProjectVersion(r Record) (*ProjectVersion) {
 	project_version := new(ProjectVersion)
 	project_version.URL = r.URL
 	project_version.ProjectName = r.ProjectName
 	project_version.CRFVersionID = r.CRFVersionID
 	project_version.LastVersion = r.LastVersion
-	if r.SubjectCount.Valid{
+	project_version.URLID = r.URLID
+	if r.SubjectCount.Valid {
 		project_version.SubjectCount = int(r.SubjectCount.Int64)
 	}
 	return project_version
