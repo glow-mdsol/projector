@@ -248,7 +248,12 @@ ORDER BY URL, project_name, crf_version_id, check_status`
 func getURLLastVersionData(db *sqlx.DB, urls map[string][]ProjectVersion)(map[string][]LastProjectVersion){
 	last := make(map[string][]LastProjectVersion)
 	for url, versions := range urls{
-		last[url] = getLastVersionDataset(db, versions[0].URLID)
+		versions := getLastVersionDataset(db, versions[0].URLID)
+		if len(versions) > 0 {
+			last[url] = versions
+		} else {
+			log.Println("No project versions found for", url)
+		}
 	}
 	return last
 }
