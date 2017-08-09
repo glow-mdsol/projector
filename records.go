@@ -107,7 +107,7 @@ func (pv *LastProjectVersion) calculatePercentages() {
 	}
 	if pv.FieldTotalFired > 0 {
 		pv.FieldPercentageChanged = float64(pv.FieldChanged) / float64(pv.FieldTotalFired)
-		pv.FieldPercentageNotChanged = float64(pv.FieldChanged) / float64(pv.FieldTotalFired)
+		pv.FieldPercentageNotChanged = float64(pv.FieldNotChanged) / float64(pv.FieldTotalFired)
 	}
 	if pv.ProgTotal > 0 {
 		pv.ProgPercentageFired = float64(pv.ProgTotalFired) / float64(pv.ProgTotal)
@@ -115,7 +115,7 @@ func (pv *LastProjectVersion) calculatePercentages() {
 	}
 	if pv.ProgTotalFired > 0 {
 		pv.ProgPercentageChanged = float64(pv.ProgChanged) / float64(pv.ProgTotalFired)
-		pv.ProgPercentageNotChanged = float64(pv.ProgChanged) / float64(pv.ProgTotalFired)
+		pv.ProgPercentageNotChanged = float64(pv.ProgNotChanged) / float64(pv.ProgTotalFired)
 	}
 }
 

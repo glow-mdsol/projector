@@ -559,10 +559,8 @@ func writeLastProjectVersion(url string, threshold int, project_versions []LastP
 		if i == 0{
 			text = "Category"
 		} else if i == 1 {
-			text = "Aggregate"
-		} else if i == 2 {
-			text ="Count"
-		} else if i >= 3 {
+			text = "Count"
+		} else if i >= 2 {
 			text = headers[i]
 		}
 		cell.SetString(text)
@@ -575,10 +573,8 @@ func writeLastProjectVersion(url string, threshold int, project_versions []LastP
 		if i == 0{
 			cell.SetString(fmt.Sprintf("> %d", threshold))
 		} else if i == 1 {
-			cell.SetString("AVERAGE")
-		} else if i == 2 {
 			cell.SetFormula(fmt.Sprintf("COUNTIF(OFFSET(C$2,0,0,ROW()-2,1),\">%d\")", threshold))
-		} else if i >= 3 {
+		} else if i >= 2 {
 			cell.SetFormula(threshold_function)
 			if strings.Contains(headers[i], "%ge"){
 				cell.NumFmt = "0.00%"
@@ -596,10 +592,8 @@ func writeLastProjectVersion(url string, threshold int, project_versions []LastP
 		if i == 0{
 			cell.SetString("ALL")
 		} else if i == 1 {
-			cell.SetString("AVERAGE")
-		} else if i == 2 {
 			cell.SetFormula("COUNTA(OFFSET(C$2,0,0,ROW()-3,1))")
-		} else if i >= 3 {
+		} else if i >= 2 {
 			cell.SetFormula(all_function)
 			if strings.Contains(headers[i], "%ge"){
 				cell.NumFmt = "0.00%"
