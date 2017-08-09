@@ -52,6 +52,23 @@ type Record struct {
 	TotalProgEditsFiredWithNoChange   int            `db:"fired_no_change_prg"`
 }
 
+type SummaryCounts struct{
+	Threshold	int
+	RecordCount int
+	SubjectCount int
+	TotalEdits	int
+	TotalFldEdits	int
+	TotalFldEditsFired	int
+	TotalFldEditsUnfired	int
+	TotalFldWithChange	int
+	TotalFldWithNoChange	int
+	TotalPrgEdits	int
+	TotalPrgEditsFired	int
+	TotalPrgEditsUnfired	int
+	TotalPrgWithChange	int
+	TotalPrgWithNoChange	int
+}
+
 type ProjectVersion struct {
 	URL               string
 	URLID             int
