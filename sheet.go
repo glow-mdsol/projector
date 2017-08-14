@@ -455,7 +455,7 @@ func writeLastProjectVersions(lpv map[string][]LastProjectVersion, threshold int
 	}
 }
 
-func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersion, sheet *xlsx.Sheet){
+func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersion, sheet *xlsx.Sheet) {
 	if len(project_versions) == 0 {
 		return
 	}
@@ -485,7 +485,7 @@ func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersio
 	var summaryCounts []SummaryCounts
 	thresholds := []int{thresholdLevel, 0}
 	// just those over the threshold
-	for  i, threshold := range thresholds {
+	for i, threshold := range thresholds {
 		// add a value for
 		summaryCounts = append(summaryCounts, SummaryCounts{})
 		for _, last_project_version := range project_versions {
@@ -540,13 +540,21 @@ func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersio
 				// Average Total Field Edit Not Fired Count
 				cell.SetFloatWithFormat(float64(summary.TotalFldEditsUnfired)/float64(summary.RecordCount), "0.00")
 			} else if i == 7 {
-				// Percentage Field Edit Fired Count
-				cell.SetFloatWithFormat(float64(summary.TotalFldEditsFired)/float64(summary.TotalFldEdits),
-					"0.00%")
+				if summary.TotalFldEdits > 0 {
+					// Percentage Field Edit Fired Count
+					cell.SetFloatWithFormat(float64(summary.TotalFldEditsFired)/float64(summary.TotalFldEdits),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
 			} else if i == 8 {
-				// Percentage Field Edit Not Fired Count
-				cell.SetFloatWithFormat(float64(summary.TotalFldEditsUnfired)/float64(summary.TotalFldEdits),
-					"0.00%")
+				if summary.TotalFldEdits > 0 {
+					// Percentage Field Edit Not Fired Count
+					cell.SetFloatWithFormat(float64(summary.TotalFldEditsUnfired)/float64(summary.TotalFldEdits),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
 			} else if i == 9 {
 				// Average Field Edit Fired with Change
 				cell.SetFloatWithFormat(float64(summary.TotalFldWithChange)/float64(summary.RecordCount),
@@ -556,13 +564,21 @@ func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersio
 				cell.SetFloatWithFormat(float64(summary.TotalFldWithNoChange)/float64(summary.RecordCount),
 					"0.00")
 			} else if i == 11 {
-				// Percentage Field Edit Fired Leading to Change
-				cell.SetFloatWithFormat(float64(summary.TotalFldWithChange)/float64(summary.TotalFldEditsFired),
-					"0.00%")
+				if summary.TotalFldEditsFired > 0 {
+					// Percentage Field Edit Fired Leading to Change
+					cell.SetFloatWithFormat(float64(summary.TotalFldWithChange)/float64(summary.TotalFldEditsFired),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
 			} else if i == 12 {
-				// Percentage Field Edit Fired Leading to No Change
-				cell.SetFloatWithFormat(float64(summary.TotalFldWithNoChange)/float64(summary.TotalFldEditsFired),
-					"0.00%")
+				if summary.TotalFldEditsFired > 0 {
+					// Percentage Field Edit Fired Leading to No Change
+					cell.SetFloatWithFormat(float64(summary.TotalFldWithNoChange)/float64(summary.TotalFldEditsFired),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
 			} else if i == 13 {
 				// Average Total Prg Edit Count
 				cell.SetFloatWithFormat(float64(summary.TotalPrgEdits)/float64(summary.RecordCount), "0.00")
@@ -573,13 +589,21 @@ func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersio
 				// Average Total Prg Edit Not Fired Count
 				cell.SetFloatWithFormat(float64(summary.TotalPrgEditsUnfired)/float64(summary.RecordCount), "0.00")
 			} else if i == 16 {
-				// Percentage Prog Edit Fired
-				cell.SetFloatWithFormat(float64(summary.TotalPrgEditsFired)/float64(summary.TotalPrgEdits),
-					"0.00%")
+				if summary.TotalPrgEdits > 0 {
+					// Percentage Prog Edit Fired
+					cell.SetFloatWithFormat(float64(summary.TotalPrgEditsFired)/float64(summary.TotalPrgEdits),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
 			} else if i == 17 {
-				// Percentage Prog Edit Not Fired
-				cell.SetFloatWithFormat(float64(summary.TotalPrgEditsUnfired)/float64(summary.TotalPrgEdits),
-					"0.00%")
+				if summary.TotalPrgEdits > 0 {
+					// Percentage Prog Edit Not Fired
+					cell.SetFloatWithFormat(float64(summary.TotalPrgEditsUnfired)/float64(summary.TotalPrgEdits),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
 			} else if i == 18 {
 				// Average Prg Edit Fired with Change
 				cell.SetFloatWithFormat(float64(summary.TotalPrgWithChange)/float64(summary.RecordCount), "0.00")
@@ -587,13 +611,21 @@ func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersio
 				// Average Prg Edit Fired with No Change
 				cell.SetFloatWithFormat(float64(summary.TotalPrgWithNoChange)/float64(summary.RecordCount), "0.00")
 			} else if i == 20 {
-				// Percentage Prog Edit Fired Leading to Change
-				cell.SetFloatWithFormat(float64(summary.TotalPrgWithChange)/float64(summary.TotalPrgEditsFired),
-					"0.00%")
+				if summary.TotalPrgEditsFired > 0 {
+					// Percentage Prog Edit Fired Leading to Change
+					cell.SetFloatWithFormat(float64(summary.TotalPrgWithChange)/float64(summary.TotalPrgEditsFired),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
 			} else if i == 21 {
-				// Percentage Prog Edit Fired Leading to No Change
-				cell.SetFloatWithFormat(float64(summary.TotalPrgWithNoChange)/float64(summary.TotalPrgEditsFired),
-					"0.00%")
+				if summary.TotalPrgEditsFired > 0 {
+					// Percentage Prog Edit Fired Leading to No Change
+					cell.SetFloatWithFormat(float64(summary.TotalPrgWithNoChange)/float64(summary.TotalPrgEditsFired),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
 			} else {
 				cell.SetString("")
 			}
