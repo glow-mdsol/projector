@@ -1,8 +1,8 @@
 package main
 
 import (
-	"log"
 	"github.com/jmoiron/sqlx"
+	"log"
 	"strings"
 )
 
@@ -18,7 +18,7 @@ func doesPatternMatch(pattern string, db *sqlx.DB) bool {
 }
 
 // export the subject counts
-func getSubjectCounts(db *sqlx.DB, pattern string) ([]SubjectCount) {
+func getSubjectCounts(db *sqlx.DB, pattern string) []SubjectCount {
 	subjectCounts := []SubjectCount{}
 	q := `WITH counts AS (SELECT
                   project_id         AS project_id,
@@ -63,7 +63,7 @@ ORDER BY  rave_url.url, project.project_name
 	return subjectCounts
 }
 
-func getUselessEdits(db *sqlx.DB, pattern string) ([]UnusedEdit) {
+func getUselessEdits(db *sqlx.DB, pattern string) []UnusedEdit {
 	unusedEdits := []UnusedEdit{}
 	q := `WITH total AS (
     SELECT
@@ -107,7 +107,7 @@ WHERE total_count = 0;
 }
 
 // export the study metrics, this is a map with a key matching the URL, and the projects as values
-func getStudyMetrics(db *sqlx.DB, pattern string) (map[string][]ProjectVersion) {
+func getStudyMetrics(db *sqlx.DB, pattern string) map[string][]ProjectVersion {
 	q := `WITH AllData AS (SELECT
                    CASE WHEN rave_url.url LIKE '%hdcvc%'
                      THEN rave_url.alternate_url
@@ -245,9 +245,9 @@ ORDER BY URL, project_name, crf_version_id, check_status`
 }
 
 // Get the last version dataset for each of the URLs
-func getURLLastVersionData(db *sqlx.DB, urls map[string][]ProjectVersion)(map[string][]LastProjectVersion){
+func getURLLastVersionData(db *sqlx.DB, urls map[string][]ProjectVersion) map[string][]LastProjectVersion {
 	last := make(map[string][]LastProjectVersion)
-	for url, versions := range urls{
+	for url, versions := range urls {
 		versions := getLastVersionDataset(db, versions[0].URLID)
 		if len(versions) > 0 {
 			last[url] = versions
@@ -259,7 +259,7 @@ func getURLLastVersionData(db *sqlx.DB, urls map[string][]ProjectVersion)(map[st
 }
 
 // get the last version dataset
-func getLastVersionDataset(db *sqlx.DB, url_id int) ([]LastProjectVersion){
+func getLastVersionDataset(db *sqlx.DB, url_id int) []LastProjectVersion {
 	q := `WITH SET AS (SELECT
   project_last_version.project_id,
   COUNT(*) AS total_count,
