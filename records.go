@@ -7,25 +7,25 @@ import (
 
 type UnusedEdit struct {
 	URL           string
-	ProjectName   string        `db:"project_name"`
-	EditCheckName string        `db:"edit_check_name"`
-	UsageCount    int            `db:"edit_check_count"`
-	OpenQuery     string            `db:"open_query"`
+	ProjectName   string `db:"project_name"`
+	EditCheckName string `db:"edit_check_name"`
+	UsageCount    int    `db:"edit_check_count"`
+	OpenQuery     string `db:"open_query"`
 }
 
 type SubjectCount struct {
 	URL          string
 	ProjectName  string        `db:"project_name"`
 	SubjectCount sql.NullInt64 `db:"subject_count"`
-	RefreshDate  pq.NullTime    `db:"refresh_date"`
+	RefreshDate  pq.NullTime   `db:"refresh_date"`
 }
 
 type Record struct {
 	URL                               string
-	URLID                             int            `db:"url_id"`
+	URLID                             int           `db:"url_id"`
 	ProjectName                       string        `db:"project_name"`
 	CRFVersionID                      string        `db:"crf_version_id"`
-	LastVersion                       bool            `db:"last_version"`
+	LastVersion                       bool          `db:"last_version"`
 	SubjectCount                      sql.NullInt64 `db:"subject_count"`
 	CheckStatus                       string        `db:"check_status"`
 	RawTotalFieldEdits                sql.NullInt64 `db:"total_edits_fld"`
@@ -48,8 +48,25 @@ type Record struct {
 	RawTotalProgWithOpenQueryFired    sql.NullInt64 `db:"total_fired_query_prg"`
 	TotalFieldWithOpenQueryFired      int
 	TotalProgWithOpenQueryFired       int
-	TotalFieldEditsFiredWithNoChange  int            `db:"fired_no_change_fld"`
-	TotalProgEditsFiredWithNoChange   int            `db:"fired_no_change_prg"`
+	TotalFieldEditsFiredWithNoChange  int `db:"fired_no_change_fld"`
+	TotalProgEditsFiredWithNoChange   int `db:"fired_no_change_prg"`
+}
+
+type SummaryCounts struct {
+	Threshold            int
+	RecordCount          int
+	SubjectCount         int
+	TotalEdits           int
+	TotalFldEdits        int
+	TotalFldEditsFired   int
+	TotalFldEditsUnfired int
+	TotalFldWithChange   int
+	TotalFldWithNoChange int
+	TotalPrgEdits        int
+	TotalPrgEditsFired   int
+	TotalPrgEditsUnfired int
+	TotalPrgWithChange   int
+	TotalPrgWithNoChange int
 }
 
 type ProjectVersion struct {
@@ -223,7 +240,7 @@ func (pv *ProjectVersion) fixUpNullValues() {
 	pv.AllEdits = fixUpRecord(pv.AllEdits)
 }
 
-func createProjectVersion(r Record) (*ProjectVersion) {
+func createProjectVersion(r Record) *ProjectVersion {
 	project_version := new(ProjectVersion)
 	project_version.URL = r.URL
 	project_version.ProjectName = r.ProjectName
