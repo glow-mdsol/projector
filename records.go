@@ -6,11 +6,16 @@ import (
 )
 
 type UnusedEdit struct {
-	URL           string
-	ProjectName   string `db:"project_name"`
-	EditCheckName string `db:"edit_check_name"`
-	UsageCount    int    `db:"edit_check_count"`
-	OpenQuery     string `db:"open_query"`
+	URL            string
+	ProjectName    string `db:"project_name"`
+	EditCheckName  string `db:"edit_check_name"`
+	UsageCount     int    `db:"edit_check_count"`
+	OpenQuery      string `db:"open_query"`
+	CustomFunction string `db:"custom_function"`
+	NonConformant  string `db:"non_conformant"`
+	RangeCheck     string `db:"range_checks"`
+	RequiredCheck  string `db:"required_check"`
+	FutureCheck    string `db:"future_checks"`
 }
 
 type SubjectCount struct {
