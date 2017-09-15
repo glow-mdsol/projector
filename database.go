@@ -72,6 +72,7 @@ func getUselessEdits(db *sqlx.DB, pattern string) []UnusedEdit {
       	edit_check_name,
 	    COUNT(*) AS edit_check_count,
       	SUM(CASE WHEN Actions LIKE '%OpenQuery%' THEN 1 ELSE 0 END) AS open_query_count,
+      	SUM(CASE WHEN Actions LIKE '%CustomFunction%' THEN 1 ELSE 0 END) AS custom_function_count,
       	SUM(query_count) AS total_count
           FROM edit_check
       JOIN rave_url ON edit_check.url_id = rave_url.id
@@ -83,7 +84,12 @@ SELECT CASE WHEN rave_url.url LIKE '%hdcvc%' THEN rave_url.alternate_url ELSE ra
   project.project_name AS project_name,
   edit_check_name AS edit_check_name,
   edit_check_count AS edit_check_count,
-  CASE WHEN open_query_count > 0 THEN 'Yes' ELSE 'No' END AS open_query
+  CASE WHEN open_query_count > 0 THEN 'Yes' ELSE 'No' END 					AS open_query,
+  CASE WHEN custom_function_count > 0 THEN 'Yes' ELSE 'No' END 				AS custom_function,
+  CASE WHEN edit_check_name LIKE 'SYS_NC_%' THEN 'Yes' ELSE 'No' END 		AS non_conformant,
+  CASE WHEN edit_check_name LIKE 'SYS_Q_RANGE_%' THEN 'Yes' ELSE 'No' END 	AS range_checks,
+  CASE WHEN edit_check_name LIKE 'SYS_REQ_%' THEN 'Yes' ELSE 'No' END 		AS required_check,
+  CASE WHEN edit_check_name LIKE 'SYS_FUTURE_%' THEN 'Yes' ELSE 'No' END 	AS future_checks
   FROM total
   JOIN rave_url ON total.url_id = rave_url.id
   JOIN project ON total.project_id = project.id
