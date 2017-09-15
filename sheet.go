@@ -73,84 +73,84 @@ func writeProjectVersion(prj ProjectVersion, row *xlsx.Row) {
 	writeMetrics(prj.InactiveEditsOnly, row)
 }
 
-// Write a metric Row
-func writeMetricsRow(rec Record, row *xlsx.Row) {
-	var cell *xlsx.Cell
-	// Study URL
-	cell = row.AddCell()
-	cell.Value = rec.URL
-	// Project Name
-	cell = row.AddCell()
-	cell.Value = rec.ProjectName
-	// CRF Version
-	cell = row.AddCell()
-	cell.Value = rec.CRFVersionID
-	// Status
-	cell = row.AddCell()
-	cell.Value = rec.CheckStatus
-	// Total Edits (fld)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalFieldEdits)
-	// Total Edits Fired (fld)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalFieldEditsFired)
-	// %ge Edits Fired (fld)
-	cell = row.AddCell()
-	if rec.TotalFieldEdits == 0 {
-		cell.SetFloat(0.0)
-	} else {
-		cell.SetFloatWithFormat(float64(rec.TotalFieldEditsFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
-	}
-	// Total Edits Unfired (fld)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalFieldEdits - rec.TotalFieldEditsFired)
-	// %ge Edits Unfired (fld)
-	cell = row.AddCell()
-	if rec.TotalFieldEdits == 0 {
-		cell.SetFloat(0.0)
-	} else {
-		cell.SetFloatWithFormat(float64(rec.TotalFieldEdits-rec.TotalFieldEditsFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
-	}
-	// Total Edits (prg)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalProgEdits)
-	// Total Edits With OpenQuery (prg)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalProgEditsWithOpenQuery)
-	// Total Edits Fired (prg)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalProgWithOpenQueryFired)
-	// %ge Edits Fired (prg)
-	cell = row.AddCell()
-	if rec.TotalProgEditsWithOpenQuery == 0 {
-		cell.SetFloat(0.0)
-	} else {
-		cell.SetFloatWithFormat(float64(rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
-	}
-	// Total Edits Unfired (prg)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalProgEditsWithOpenQuery - rec.TotalProgWithOpenQueryFired)
-	// %ge Edits Unfired (prg)
-	cell = row.AddCell()
-	if rec.TotalProgEditsWithOpenQuery == 0 {
-		cell.SetFloat(0.0)
-	} else {
-		cell.SetFloatWithFormat(float64(rec.TotalProgEditsWithOpenQuery-rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
-	}
-	// Total Queries (fld)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalFieldQueries)
-	// Total Queries (prg)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalProgQueries)
-	// Total Queries With OpenQuery (prg)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalProgQueriesWithOpenQuery)
-	//cell = row.AddCell()
-	//cell.SetInt(rec.TotalFieldEditsFiredWithNoChange)
-	//cell = row.AddCell()
-	//cell.SetInt(rec.TotalProgEditsFiredWithNoChange)
-}
+//// Write a metric Row
+//func writeMetricsRow(rec Record, row *xlsx.Row) {
+//	var cell *xlsx.Cell
+//	// Study URL
+//	cell = row.AddCell()
+//	cell.Value = rec.URL
+//	// Project Name
+//	cell = row.AddCell()
+//	cell.Value = rec.ProjectName
+//	// CRF Version
+//	cell = row.AddCell()
+//	cell.Value = rec.CRFVersionID
+//	// Status
+//	cell = row.AddCell()
+//	cell.Value = rec.CheckStatus
+//	// Total Edits (fld)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalFieldEdits)
+//	// Total Edits Fired (fld)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalFieldEditsFired)
+//	// %ge Edits Fired (fld)
+//	cell = row.AddCell()
+//	if rec.TotalFieldEdits == 0 {
+//		cell.SetFloat(0.0)
+//	} else {
+//		cell.SetFloatWithFormat(float64(rec.TotalFieldEditsFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
+//	}
+//	// Total Edits Unfired (fld)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalFieldEdits - rec.TotalFieldEditsFired)
+//	// %ge Edits Unfired (fld)
+//	cell = row.AddCell()
+//	if rec.TotalFieldEdits == 0 {
+//		cell.SetFloat(0.0)
+//	} else {
+//		cell.SetFloatWithFormat(float64(rec.TotalFieldEdits-rec.TotalFieldEditsFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
+//	}
+//	// Total Edits (prg)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalProgEdits)
+//	// Total Edits With OpenQuery (prg)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalProgEditsWithOpenQuery)
+//	// Total Edits Fired (prg)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalProgWithOpenQueryFired)
+//	// %ge Edits Fired (prg)
+//	cell = row.AddCell()
+//	if rec.TotalProgEditsWithOpenQuery == 0 {
+//		cell.SetFloat(0.0)
+//	} else {
+//		cell.SetFloatWithFormat(float64(rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
+//	}
+//	// Total Edits Unfired (prg)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalProgEditsWithOpenQuery - rec.TotalProgWithOpenQueryFired)
+//	// %ge Edits Unfired (prg)
+//	cell = row.AddCell()
+//	if rec.TotalProgEditsWithOpenQuery == 0 {
+//		cell.SetFloat(0.0)
+//	} else {
+//		cell.SetFloatWithFormat(float64(rec.TotalProgEditsWithOpenQuery-rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
+//	}
+//	// Total Queries (fld)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalFieldQueries)
+//	// Total Queries (prg)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalProgQueries)
+//	// Total Queries With OpenQuery (prg)
+//	cell = row.AddCell()
+//	cell.SetInt(rec.TotalProgQueriesWithOpenQuery)
+//	//cell = row.AddCell()
+//	//cell.SetInt(rec.TotalFieldEditsFiredWithNoChange)
+//	//cell = row.AddCell()
+//	//cell.SetInt(rec.TotalProgEditsFiredWithNoChange)
+//}
 
 // write a set of metrics to the file
 func writeMetrics(rec Record, row *xlsx.Row) {
@@ -335,69 +335,75 @@ func writeStudyMetrics(data map[string][]ProjectVersion, wbk *xlsx.File) {
 }
 
 // write study metrics
-func writeStudyMetricsPartitioned(data map[string][]ProjectVersion, wbk *xlsx.File) {
-	headers := []string{"Study URL",
-		"Project Name",
-		"CRF Version",
-		"Status",
-		"Total Edits (fld)",
-		"Total Edits Fired (fld)",
-		"Total Edits Unfired (fld)",
-		"%ge Edits Fired (fld)",
-		"%ge Edits Unfired (fld)",
-		"Total Edits (prg)",
-		"Total Edits With OpenQuery (prg)",
-		"Total Edits Fired (prg)",
-		"Total Edits Unfired (prg)",
-		"%ge Edits Fired (prg)",
-		"%ge Edits Unfired (prg)",
-		"Total Queries (fld)",
-		"Total Queries (prg)",
-		"Total Queries With OpenQuery (prg)",
-		//"Total Edits Fired With No Change (fld)",
-		//"Total Edits Fired With No Change (prg)"
-	}
-	var urls []string
-	for k := range data {
-		urls = append(urls, k)
-	}
-	sort.Strings(urls)
-	for _, url := range urls {
-
-		// create the sheet
-		sheet, created := getOrAddSheet(wbk, url)
-		if created {
-			// Add the headers
-			writeHeaderRow(headers, sheet)
-		}
-		//log.Println("Created Sheet for URL ", url)
-
-		for _, project_version := range data[url] {
-			// Add the row for Active Checks
-			var row *xlsx.Row
-			active_only := project_version.ActiveEditsOnly
-			//
-			if active_only.URL != "" {
-				row = sheet.AddRow()
-				writeMetricsRow(active_only, row)
-				row = sheet.AddRow()
-				inactive_only := project_version.InactiveEditsOnly
-				writeMetricsRow(inactive_only, row)
-			} else {
-				// predate the active check
-				row = sheet.AddRow()
-				writeMetricsRow(project_version.AllEdits, row)
-			}
-		}
-	}
-}
+//func writeStudyMetricsPartitioned(data map[string][]ProjectVersion, wbk *xlsx.File) {
+//	headers := []string{"Study URL",
+//		"Project Name",
+//		"CRF Version",
+//		"Status",
+//		"Total Edits (fld)",
+//		"Total Edits Fired (fld)",
+//		"Total Edits Unfired (fld)",
+//		"%ge Edits Fired (fld)",
+//		"%ge Edits Unfired (fld)",
+//		"Total Edits (prg)",
+//		"Total Edits With OpenQuery (prg)",
+//		"Total Edits Fired (prg)",
+//		"Total Edits Unfired (prg)",
+//		"%ge Edits Fired (prg)",
+//		"%ge Edits Unfired (prg)",
+//		"Total Queries (fld)",
+//		"Total Queries (prg)",
+//		"Total Queries With OpenQuery (prg)",
+//		//"Total Edits Fired With No Change (fld)",
+//		//"Total Edits Fired With No Change (prg)"
+//	}
+//	var urls []string
+//	for k := range data {
+//		urls = append(urls, k)
+//	}
+//	sort.Strings(urls)
+//	for _, url := range urls {
+//
+//		// create the sheet
+//		sheet, created := getOrAddSheet(wbk, url)
+//		if created {
+//			// Add the headers
+//			writeHeaderRow(headers, sheet)
+//		}
+//		//log.Println("Created Sheet for URL ", url)
+//
+//		for _, project_version := range data[url] {
+//			// Add the row for Active Checks
+//			var row *xlsx.Row
+//			active_only := project_version.ActiveEditsOnly
+//			//
+//			if active_only.URL != "" {
+//				row = sheet.AddRow()
+//				writeMetricsRow(active_only, row)
+//				row = sheet.AddRow()
+//				inactive_only := project_version.InactiveEditsOnly
+//				writeMetricsRow(inactive_only, row)
+//			} else {
+//				// predate the active check
+//				row = sheet.AddRow()
+//				writeMetricsRow(project_version.AllEdits, row)
+//			}
+//		}
+//	}
+//}
 
 func writeUselessEdits(edits []UnusedEdit, wbk *xlsx.File) {
 	headers := []string{"Study URL",
 		"Project Name",
 		"Edit Check Name",
 		"Times Used",
-		"OpenQuery Check?"}
+		"OpenQuery Check?",
+		"Custom Function?",
+		"Non-conformance check?",
+		"Required check?",
+		"Future check?",
+		"Range check?",
+	}
 
 	tab_name := "Unused Edits"
 
@@ -409,7 +415,7 @@ func writeUselessEdits(edits []UnusedEdit, wbk *xlsx.File) {
 	}
 	auto_filter := new(xlsx.AutoFilter)
 	auto_filter.TopLeftCell = "A1"
-	auto_filter.BottomRightCell = "E1"
+	auto_filter.BottomRightCell = "J1"
 	sheet.AutoFilter = auto_filter
 
 	url_length := 12
@@ -440,6 +446,16 @@ func writeUselessEdits(edits []UnusedEdit, wbk *xlsx.File) {
 		cell.SetInt(edit.UsageCount)
 		cell = row.AddCell()
 		cell.SetString(edit.OpenQuery)
+		cell = row.AddCell()
+		cell.SetString(edit.CustomFunction)
+		cell = row.AddCell()
+		cell.SetString(edit.NonConformant)
+		cell = row.AddCell()
+		cell.SetString(edit.RequiredCheck)
+		cell = row.AddCell()
+		cell.SetString(edit.FutureCheck)
+		cell = row.AddCell()
+		cell.SetString(edit.RangeCheck)
 	}
 	sheet.SetColWidth(0, 0, float64(url_length))
 	sheet.SetColWidth(1, 1, float64(project_length))
