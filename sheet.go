@@ -73,85 +73,6 @@ func writeProjectVersion(prj ProjectVersion, row *xlsx.Row) {
 	writeMetrics(prj.InactiveEditsOnly, row)
 }
 
-//// Write a metric Row
-//func writeMetricsRow(rec Record, row *xlsx.Row) {
-//	var cell *xlsx.Cell
-//	// Study URL
-//	cell = row.AddCell()
-//	cell.Value = rec.URL
-//	// Project Name
-//	cell = row.AddCell()
-//	cell.Value = rec.ProjectName
-//	// CRF Version
-//	cell = row.AddCell()
-//	cell.Value = rec.CRFVersionID
-//	// Status
-//	cell = row.AddCell()
-//	cell.Value = rec.CheckStatus
-//	// Total Edits (fld)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalFieldEdits)
-//	// Total Edits Fired (fld)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalFieldEditsFired)
-//	// %ge Edits Fired (fld)
-//	cell = row.AddCell()
-//	if rec.TotalFieldEdits == 0 {
-//		cell.SetFloat(0.0)
-//	} else {
-//		cell.SetFloatWithFormat(float64(rec.TotalFieldEditsFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
-//	}
-//	// Total Edits Unfired (fld)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalFieldEdits - rec.TotalFieldEditsFired)
-//	// %ge Edits Unfired (fld)
-//	cell = row.AddCell()
-//	if rec.TotalFieldEdits == 0 {
-//		cell.SetFloat(0.0)
-//	} else {
-//		cell.SetFloatWithFormat(float64(rec.TotalFieldEdits-rec.TotalFieldEditsFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
-//	}
-//	// Total Edits (prg)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalProgEdits)
-//	// Total Edits With OpenQuery (prg)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalProgEditsWithOpenQuery)
-//	// Total Edits Fired (prg)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalProgWithOpenQueryFired)
-//	// %ge Edits Fired (prg)
-//	cell = row.AddCell()
-//	if rec.TotalProgEditsWithOpenQuery == 0 {
-//		cell.SetFloat(0.0)
-//	} else {
-//		cell.SetFloatWithFormat(float64(rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
-//	}
-//	// Total Edits Unfired (prg)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalProgEditsWithOpenQuery - rec.TotalProgWithOpenQueryFired)
-//	// %ge Edits Unfired (prg)
-//	cell = row.AddCell()
-//	if rec.TotalProgEditsWithOpenQuery == 0 {
-//		cell.SetFloat(0.0)
-//	} else {
-//		cell.SetFloatWithFormat(float64(rec.TotalProgEditsWithOpenQuery-rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
-//	}
-//	// Total Queries (fld)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalFieldQueries)
-//	// Total Queries (prg)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalProgQueries)
-//	// Total Queries With OpenQuery (prg)
-//	cell = row.AddCell()
-//	cell.SetInt(rec.TotalProgQueriesWithOpenQuery)
-//	//cell = row.AddCell()
-//	//cell.SetInt(rec.TotalFieldEditsFiredWithNoChange)
-//	//cell = row.AddCell()
-//	//cell.SetInt(rec.TotalProgEditsFiredWithNoChange)
-//}
-
 // write a set of metrics to the file
 func writeMetrics(rec Record, row *xlsx.Row) {
 	var cell *xlsx.Cell
@@ -334,64 +255,6 @@ func writeStudyMetrics(data map[string][]ProjectVersion, wbk *xlsx.File) {
 	}
 }
 
-// write study metrics
-//func writeStudyMetricsPartitioned(data map[string][]ProjectVersion, wbk *xlsx.File) {
-//	headers := []string{"Study URL",
-//		"Project Name",
-//		"CRF Version",
-//		"Status",
-//		"Total Edits (fld)",
-//		"Total Edits Fired (fld)",
-//		"Total Edits Unfired (fld)",
-//		"%ge Edits Fired (fld)",
-//		"%ge Edits Unfired (fld)",
-//		"Total Edits (prg)",
-//		"Total Edits With OpenQuery (prg)",
-//		"Total Edits Fired (prg)",
-//		"Total Edits Unfired (prg)",
-//		"%ge Edits Fired (prg)",
-//		"%ge Edits Unfired (prg)",
-//		"Total Queries (fld)",
-//		"Total Queries (prg)",
-//		"Total Queries With OpenQuery (prg)",
-//		//"Total Edits Fired With No Change (fld)",
-//		//"Total Edits Fired With No Change (prg)"
-//	}
-//	var urls []string
-//	for k := range data {
-//		urls = append(urls, k)
-//	}
-//	sort.Strings(urls)
-//	for _, url := range urls {
-//
-//		// create the sheet
-//		sheet, created := getOrAddSheet(wbk, url)
-//		if created {
-//			// Add the headers
-//			writeHeaderRow(headers, sheet)
-//		}
-//		//log.Println("Created Sheet for URL ", url)
-//
-//		for _, project_version := range data[url] {
-//			// Add the row for Active Checks
-//			var row *xlsx.Row
-//			active_only := project_version.ActiveEditsOnly
-//			//
-//			if active_only.URL != "" {
-//				row = sheet.AddRow()
-//				writeMetricsRow(active_only, row)
-//				row = sheet.AddRow()
-//				inactive_only := project_version.InactiveEditsOnly
-//				writeMetricsRow(inactive_only, row)
-//			} else {
-//				// predate the active check
-//				row = sheet.AddRow()
-//				writeMetricsRow(project_version.AllEdits, row)
-//			}
-//		}
-//	}
-//}
-
 func writeUselessEdits(edits []UnusedEdit, wbk *xlsx.File) {
 	headers := []string{"Study URL",
 		"Project Name",
@@ -471,11 +334,257 @@ func writeLastProjectVersions(lpv map[string][]LastProjectVersion, threshold int
 	}
 }
 
-func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersion, sheet *xlsx.Sheet) {
-	if len(project_versions) == 0 {
-		return
+// write the Subject Counts
+func writeLastProjectVersion(url string, threshold int, project_versions []LastProjectVersion, wbk *xlsx.File) {
+
+	tab_name := fmt.Sprintf("Last - %s", url)
+	headers := []string{"Project Name", "CRF Version ID", "Subject Count",
+		"Total Checks",
+		"Total Checks (Field)",
+		"Total Checks Fired (Field)", "Total Checks Not Fired (Field)",
+		"%ge Checks Fired (Field)", "%ge Checks Not Fired (Field)",
+		"Checks with Change (Field)", "Checks with No Change (Field)",
+		"%ge Checks with Change (Field)", "%ge Checks with No Change (Field)",
+		"Total Checks (Prog)",
+		"Total Checks Fired (Prog)", "Total Checks Not Fired (Prog)",
+		"%ge Checks Fired (Prog)", "%ge Checks Not Fired (Prog)",
+		"Checks with Change (Prog)", "Checks with No Change (Prog)",
+		"%ge Checks with Change (Prog)", "%ge Checks with No Change (Prog)",
 	}
-	headers := []string{"Category", "Sample Count", "Avg. Subject Count",
+
+	// create the sheet
+	sheet, created := getOrAddSheet(wbk, tab_name)
+	if created {
+		// Add the headers
+		writeHeaderRow(headers, sheet)
+	}
+
+	for _, last_project_version := range project_versions {
+		// Build the summary counts
+		var cell *xlsx.Cell
+		// Rows
+		row := sheet.AddRow()
+		// Project Name
+		cell = row.AddCell()
+		cell.SetString(last_project_version.ProjectName)
+		// CRF Version ID
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.CRFVersionID)
+		// Subject Count
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.SubjectCount)
+		// Total Checks
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.TotalCount)
+		// Total Field Checks
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldTotal)
+		// Total Field Checks Fired
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldTotalFired)
+		// Total Field Checks Not Fired
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldTotalNotFired)
+		// Percentage Field Checks Fired
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.FieldPercentageFired, "0.00%")
+		// Percentage Field Checks Not Fired
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.FieldPercentageNotFired, "0.00%")
+		// Total Field Checks with Change
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldChanged)
+		// Total Field Checks with No Change
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.FieldNotChanged)
+		// Percentage Field Checks Leading to Data Change
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.FieldPercentageChanged, "0.00%")
+		// Percentage Field Checks Leading to No Data Change
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.FieldPercentageNotChanged, "0.00%")
+		// Total Prog Checks
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgTotal)
+		// Total Prog Checks Fired
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgTotalFired)
+		// Total Prog Checks Not Fired
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgTotalNotFired)
+		// Percentage Prog Checks Fired
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.ProgPercentageFired, "0.00%")
+		// Percentage Prog Checks Not Fired
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.ProgPercentageNotFired, "0.00%")
+		// Total Prog Checks with Change
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgChanged)
+		// Total Prog Checks with No Change
+		cell = row.AddCell()
+		cell.SetInt(last_project_version.ProgNotChanged)
+		// Percentage Prog Checks Leading to Data Change
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.ProgPercentageChanged, "0.00%")
+		// Percentage Prog Checks Leading to No Data Change
+		cell = row.AddCell()
+		cell.SetFloatWithFormat(last_project_version.ProgPercentageNotChanged, "0.00%")
+	}
+	// write the summary counts
+	writeSummaryCounts(threshold, project_versions, sheet)
+
+}
+
+func writeTotalSummaryCounts(summaryCounts []SummaryCounts, sheet *xlsx.Sheet) {
+	// write the totals
+	headers := []string{"Threshold",
+		"Sample Count",
+		"Avg. Subject Count",
+		"Total Checks",
+		"Total Checks (Field)",
+		"Total Checks Fired (Field)",
+		"Total Checks Not Fired (Field)",
+		"%ge Checks Fired (Field)",
+		"%ge Checks Not Fired (Field)",
+		"Checks with Change (Field)",
+		"Checks with No Change (Field)",
+		"%ge Checks with Change (Field)",
+		"%ge Checks with No Change (Field)",
+		"Total Checks (Prog)",
+		"Total Checks Fired (Prog)",
+		"Total Checks Not Fired (Prog)",
+		"%ge Checks Fired (Prog)",
+		"%ge Checks Not Fired (Prog)",
+		"Checks with Change (Prog)",
+		"Checks with No Change (Prog)",
+		"%ge Checks with Change (Prog)",
+		"%ge Checks with No Change (Prog)",
+	}
+	writeHeaderRow(headers, sheet)
+	for _, summary := range summaryCounts {
+		// Add a row
+		row := sheet.AddRow()
+		for i := 0; i < 22; i++ {
+			cell := row.AddCell()
+			if i == 0 {
+				if summary.Threshold > 0 {
+					cell.SetString(fmt.Sprintf("> %d", summary.Threshold))
+				} else {
+					cell.SetString("ALL")
+				}
+			} else if i == 1 {
+				cell.SetInt(summary.RecordCount)
+			} else if i == 2 {
+				// Average Subject Count
+				cell.SetFloatWithFormat(float64(summary.SubjectCount)/float64(summary.RecordCount), "0.00")
+			} else if i == 3 {
+				// Total Edit Count
+				cell.SetInt(summary.TotalEdits)
+			} else if i == 4 {
+				// Total Field Edit Count
+				cell.SetInt(summary.TotalFldEdits)
+			} else if i == 5 {
+				// Total Field Edit Fired Count
+				cell.SetInt(summary.TotalFldEditsFired)
+			} else if i == 6 {
+				// Total Field Edit Not Fired Count
+				cell.SetInt(summary.TotalFldEditsUnfired)
+			} else if i == 7 {
+				if summary.TotalFldEdits > 0 {
+					// Percentage Field Edit Fired Count
+					cell.SetFloatWithFormat(float64(summary.TotalFldEditsFired)/float64(summary.TotalFldEdits),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
+			} else if i == 8 {
+				if summary.TotalFldEdits > 0 {
+					// Percentage Field Edit Not Fired Count
+					cell.SetFloatWithFormat(float64(summary.TotalFldEditsUnfired)/float64(summary.TotalFldEdits),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
+			} else if i == 9 {
+				// Field Edit Fired with Change
+				cell.SetInt(summary.TotalFldWithChange)
+			} else if i == 10 {
+				// Field Edit Fired with No Change
+				cell.SetInt(summary.TotalFldWithNoChange)
+			} else if i == 11 {
+				if summary.TotalFldEditsFired > 0 {
+					// Percentage Field Edit Fired Leading to Change
+					cell.SetFloatWithFormat(float64(summary.TotalFldWithChange)/float64(summary.TotalFldEditsFired),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
+			} else if i == 12 {
+				if summary.TotalFldEditsFired > 0 {
+					// Percentage Field Edit Fired Leading to No Change
+					cell.SetFloatWithFormat(float64(summary.TotalFldWithNoChange)/float64(summary.TotalFldEditsFired),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
+			} else if i == 13 {
+				// Total Prg Edit Count
+				cell.SetInt(summary.TotalPrgEdits)
+			} else if i == 14 {
+				// Total Prg Edit Fired Count
+				cell.SetInt(summary.TotalPrgEditsFired)
+			} else if i == 15 {
+				// Total Prg Edit Not Fired Count
+				cell.SetInt(summary.TotalPrgEditsUnfired)
+			} else if i == 16 {
+				if summary.TotalPrgEdits > 0 {
+					// Percentage Prog Edit Fired
+					cell.SetFloatWithFormat(float64(summary.TotalPrgEditsFired)/float64(summary.TotalPrgEdits),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
+			} else if i == 17 {
+				if summary.TotalPrgEdits > 0 {
+					// Percentage Prog Edit Not Fired
+					cell.SetFloatWithFormat(float64(summary.TotalPrgEditsUnfired)/float64(summary.TotalPrgEdits),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
+			} else if i == 18 {
+				// Prg Edit Fired with Change
+				cell.SetInt(summary.TotalPrgWithChange)
+			} else if i == 19 {
+				// Prg Edit Fired with No Change
+				cell.SetInt(summary.TotalPrgWithNoChange)
+			} else if i == 20 {
+				if summary.TotalPrgEditsFired > 0 {
+					// Percentage Prog Edit Fired Leading to Change
+					cell.SetFloatWithFormat(float64(summary.TotalPrgWithChange)/float64(summary.TotalPrgEditsFired),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
+			} else if i == 21 {
+				if summary.TotalPrgEditsFired > 0 {
+					// Percentage Prog Edit Fired Leading to No Change
+					cell.SetFloatWithFormat(float64(summary.TotalPrgWithNoChange)/float64(summary.TotalPrgEditsFired),
+						"0.00%")
+				} else {
+					cell.SetInt(0)
+				}
+			} else {
+				cell.SetString("")
+			}
+		}
+	}
+}
+
+func writeAverageSummaryCounts(summaryCounts []SummaryCounts, sheet *xlsx.Sheet) {
+	// write the averages
+	headers := []string{"Threshold", "Sample Count", "Avg. Subject Count",
 		"Avg. Total Checks",
 		"Avg. Total Checks (Field)",
 		"Avg. Total Checks Fired (Field)",
@@ -497,36 +606,6 @@ func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersio
 		"%ge Checks with No Change (Prog)",
 	}
 	writeHeaderRow(headers, sheet)
-	// Count holders
-	var summaryCounts []SummaryCounts
-	thresholds := []int{thresholdLevel, 0}
-	// just those over the threshold
-	for i, threshold := range thresholds {
-		// add a value for
-		summaryCounts = append(summaryCounts, SummaryCounts{})
-		for _, last_project_version := range project_versions {
-			// filtered set of counts
-			if last_project_version.SubjectCount > threshold {
-				//log.Println("Adding counts for ", last_project_version.ProjectName,"with count",last_project_version.SubjectCount, "with threshold",threshold)
-				summaryCounts[i].RecordCount += 1
-				summaryCounts[i].Threshold = threshold
-				summaryCounts[i].SubjectCount += last_project_version.SubjectCount
-				summaryCounts[i].TotalEdits += last_project_version.TotalCount
-				summaryCounts[i].TotalFldEdits += last_project_version.FieldTotal
-				summaryCounts[i].TotalFldEditsFired += last_project_version.FieldTotalFired
-				summaryCounts[i].TotalFldEditsUnfired += last_project_version.FieldTotalNotFired
-				summaryCounts[i].TotalFldWithChange += last_project_version.FieldChanged
-				summaryCounts[i].TotalFldWithNoChange += last_project_version.FieldNotChanged
-				summaryCounts[i].TotalPrgEdits += last_project_version.ProgTotal
-				summaryCounts[i].TotalPrgEditsFired += last_project_version.ProgTotalFired
-				summaryCounts[i].TotalPrgEditsUnfired += last_project_version.ProgTotalNotFired
-				summaryCounts[i].TotalPrgWithChange += last_project_version.ProgChanged
-				summaryCounts[i].TotalPrgWithNoChange += last_project_version.ProgNotChanged
-			}
-		}
-	}
-	// now all of them
-
 	for _, summary := range summaryCounts {
 		// Add a row
 		row := sheet.AddRow()
@@ -648,107 +727,67 @@ func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersio
 		}
 
 	}
+}
+
+func writeNotes(sheet *xlsx.Sheet) {
+	// Add the notes to the sheet
+	row := sheet.AddRow()
+	cell := row.AddCell()
+	boldface := *xlsx.NewFont(12, "Verdana")
+	boldface.Bold = true
+	centerHalign := *xlsx.DefaultAlignment()
+	centerHalign.Horizontal = "center"
+	titleFace := xlsx.NewStyle()
+	titleFace.Font = boldface
+	titleFace.Alignment = centerHalign
+	titleFace.ApplyAlignment = true
+	titleFace.ApplyFont = true
+	cell.SetStyle(titleFace)
+	cell.SetString("Notes")
+	notes := []string{"Threshold represents the lower limit on number of participants",
+		"Edit counts are restricted to those including CheckAction of OpenQuery"}
+	for _, note := range notes {
+		row = sheet.AddRow()
+		cell = row.AddCell()
+		cell.SetString(note)
+	}
 
 }
 
-// write the Subject Counts
-func writeLastProjectVersion(url string, threshold int, project_versions []LastProjectVersion, wbk *xlsx.File) {
-
-	tab_name := fmt.Sprintf("Last - %s", url)
-	headers := []string{"Project Name", "CRF Version ID", "Subject Count",
-		"Total Checks",
-		"Total Checks (Field)",
-		"Total Checks Fired (Field)", "Total Checks Not Fired (Field)",
-		"%ge Checks Fired (Field)", "%ge Checks Not Fired (Field)",
-		"Checks with Change (Field)", "Checks with No Change (Field)",
-		"%ge Checks with Change (Field)", "%ge Checks with No Change (Field)",
-		"Total Checks (Prog)",
-		"Total Checks Fired (Prog)", "Total Checks Not Fired (Prog)",
-		"%ge Checks Fired (Prog)", "%ge Checks Not Fired (Prog)",
-		"Checks with Change (Prog)", "Checks with No Change (Prog)",
-		"%ge Checks with Change (Prog)", "%ge Checks with No Change (Prog)",
+func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersion, sheet *xlsx.Sheet) {
+	if len(project_versions) == 0 {
+		return
 	}
-
-	// create the sheet
-	sheet, created := getOrAddSheet(wbk, tab_name)
-	if created {
-		// Add the headers
-		writeHeaderRow(headers, sheet)
+	// Count holders
+	var summaryCounts []SummaryCounts
+	thresholds := []int{thresholdLevel, 0}
+	// just those over the threshold
+	for i, threshold := range thresholds {
+		// add a value for
+		summaryCounts = append(summaryCounts, SummaryCounts{})
+		for _, last_project_version := range project_versions {
+			// filtered set of counts
+			if last_project_version.SubjectCount > threshold {
+				//log.Println("Adding counts for ", last_project_version.ProjectName,"with count",last_project_version.SubjectCount, "with threshold",threshold)
+				summaryCounts[i].RecordCount += 1
+				summaryCounts[i].Threshold = threshold
+				summaryCounts[i].SubjectCount += last_project_version.SubjectCount
+				summaryCounts[i].TotalEdits += last_project_version.TotalCount
+				summaryCounts[i].TotalFldEdits += last_project_version.FieldTotal
+				summaryCounts[i].TotalFldEditsFired += last_project_version.FieldTotalFired
+				summaryCounts[i].TotalFldEditsUnfired += last_project_version.FieldTotalNotFired
+				summaryCounts[i].TotalFldWithChange += last_project_version.FieldChanged
+				summaryCounts[i].TotalFldWithNoChange += last_project_version.FieldNotChanged
+				summaryCounts[i].TotalPrgEdits += last_project_version.ProgTotal
+				summaryCounts[i].TotalPrgEditsFired += last_project_version.ProgTotalFired
+				summaryCounts[i].TotalPrgEditsUnfired += last_project_version.ProgTotalNotFired
+				summaryCounts[i].TotalPrgWithChange += last_project_version.ProgChanged
+				summaryCounts[i].TotalPrgWithNoChange += last_project_version.ProgNotChanged
+			}
+		}
 	}
-
-	for _, last_project_version := range project_versions {
-		// Build the summary counts
-		var cell *xlsx.Cell
-		// Rows
-		row := sheet.AddRow()
-		// Project Name
-		cell = row.AddCell()
-		cell.SetString(last_project_version.ProjectName)
-		// CRF Version ID
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.CRFVersionID)
-		// Subject Count
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.SubjectCount)
-		// Total Checks
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.TotalCount)
-		// Total Field Checks
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldTotal)
-		// Total Field Checks Fired
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldTotalFired)
-		// Total Field Checks Not Fired
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldTotalNotFired)
-		// Percentage Field Checks Fired
-		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.FieldPercentageFired, "0.00%")
-		// Percentage Field Checks Not Fired
-		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.FieldPercentageNotFired, "0.00%")
-		// Total Field Checks with Change
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldChanged)
-		// Total Field Checks with No Change
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldNotChanged)
-		// Percentage Field Checks Leading to Data Change
-		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.FieldPercentageChanged, "0.00%")
-		// Percentage Field Checks Leading to No Data Change
-		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.FieldPercentageNotChanged, "0.00%")
-		// Total Prog Checks
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgTotal)
-		// Total Prog Checks Fired
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgTotalFired)
-		// Total Prog Checks Not Fired
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgTotalNotFired)
-		// Percentage Prog Checks Fired
-		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.ProgPercentageFired, "0.00%")
-		// Percentage Prog Checks Not Fired
-		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.ProgPercentageNotFired, "0.00%")
-		// Total Prog Checks with Change
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgChanged)
-		// Total Prog Checks with No Change
-		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgNotChanged)
-		// Percentage Prog Checks Leading to Data Change
-		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.ProgPercentageChanged, "0.00%")
-		// Percentage Prog Checks Leading to No Data Change
-		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.ProgPercentageNotChanged, "0.00%")
-	}
-	// write the summary counts
-	writeSummaryCounts(threshold, project_versions, sheet)
-
+	// write the counts out
+	writeTotalSummaryCounts(summaryCounts, sheet)
+	writeAverageSummaryCounts(summaryCounts, sheet)
+	writeNotes(sheet)
 }
