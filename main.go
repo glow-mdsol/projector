@@ -34,8 +34,8 @@ func main() {
 	file_name := flag.String("output", "report", "Output File Name")
 	threshold := flag.Int("threshold", 10, "Threshold for Reporting")
 	flag.Parse()
-	if len(patternsArray) == 0 {
-		log.Fatal("Need to specify the patterns")
+	if len(patternsArray) == 0 && *rave_url == "" {
+		log.Fatal("Need to specify the patterns or url")
 	}
 	var data_source_name = fmt.Sprintf("host=%s user=%s dbname=%s password=%s sslmode=disable",
 		*host_name,
@@ -50,7 +50,12 @@ func main() {
 	}
 	workbook := xlsx.NewFile()
 	if *rave_url != "" {
-		patternsArray.Set(*rave_url)
+		if !strings.HasSuffix(*rave_url, ".mdsol.com") {
+			// if we don't end with mdsol.com, then set it
+			patternsArray.Set(fmt.Sprintf("%s.mdsol.com", *rave_url))
+		} else {
+			patternsArray.Set(*rave_url)
+		}
 	}
 	for _, url_pattern := range patternsArray {
 		if !doesPatternMatch(url_pattern, dbConn) {
