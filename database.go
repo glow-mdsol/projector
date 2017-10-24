@@ -266,6 +266,7 @@ func getURLLastVersionData(db *sqlx.DB, urls map[string][]ProjectVersion) map[st
 
 // get the last version dataset
 func getLastVersionDataset(db *sqlx.DB, url_id int) []LastProjectVersion {
+	// Note we only pull out the checks that can register (ie with OpenQuery)
 	q := `WITH SET AS (SELECT
   project_last_version.project_id,
   COUNT(*) AS total_count,
