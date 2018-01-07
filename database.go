@@ -212,39 +212,39 @@ ORDER BY URL, project_name, crf_version_id, check_status`
 
 	// Status variable
 	urls := make(map[string][]ProjectVersion)
-	var project_version *ProjectVersion
+	var projectVersion *ProjectVersion
 	for rows.Next() {
 		var r Record
 		if err := rows.StructScan(&r); err != nil {
 			log.Fatal(err)
 		}
 		// First Row
-		if project_version == nil {
-			project_version = createProjectVersion(r)
-		} else if r.URL != project_version.URL || r.ProjectName != project_version.ProjectName || r.CRFVersionID != project_version.CRFVersionID {
+		if projectVersion == nil {
+			projectVersion = createProjectVersion(r)
+		} else if r.URL != projectVersion.URL || r.ProjectName != projectVersion.ProjectName || r.CRFVersionID != projectVersion.CRFVersionID {
 			// remove the .mdsol.com
 			// refresh the the inactive counts
-			prefix := strings.Split(project_version.URL, ".")[0]
+			prefix := strings.Split(projectVersion.URL, ".")[0]
 			// Data munging
-			project_version.fixUpNullValues()
-			project_version.calculateInactiveCounts()
+			projectVersion.fixUpNullValues()
+			projectVersion.calculateInactiveCounts()
 			// store for posterity
-			urls[prefix] = append(urls[prefix], *project_version)
-			project_version = createProjectVersion(r)
+			urls[prefix] = append(urls[prefix], *projectVersion)
+			projectVersion = createProjectVersion(r)
 		}
 		if r.CheckStatus == "ALLCHECKS" {
-			project_version.AllEdits = r
+			projectVersion.AllEdits = r
 		} else {
-			project_version.ActiveEditsOnly = r
+			projectVersion.ActiveEditsOnly = r
 		}
 		//log.Println("Generated",r.CheckStatus,"for",r.ProjectName,"(",r.URL,")")
 
 	}
 	// missing last loop
-	prefix := strings.Split(project_version.URL, ".")[0]
-	project_version = fixUpNullValues(project_version)
-	project_version = calculateInactiveCounts(project_version)
-	urls[prefix] = append(urls[prefix], *project_version)
+	prefix := strings.Split(projectVersion.URL, ".")[0]
+	projectVersion = fixUpNullValues(projectVersion)
+	projectVersion = calculateInactiveCounts(projectVersion)
+	urls[prefix] = append(urls[prefix], *projectVersion)
 	// Log output
 	log.Println("Generated metrics for ", len(urls), "URLs")
 	return urls
@@ -300,7 +300,7 @@ ORDER BY project.project_name;
 		log.Fatal("Query failed: ", err)
 	}
 	defer rows.Close()
-	project_versions := []LastProjectVersion{}
+	projectVersions := []LastProjectVersion{}
 	for rows.Next() {
 		var r LastProjectVersion
 		if err := rows.StructScan(&r); err != nil {
@@ -308,7 +308,7 @@ ORDER BY project.project_name;
 		}
 		// Add the percentages
 		r.calculatePercentages()
-		project_versions = append(project_versions, r)
+		projectVersions = append(projectVersions, r)
 	}
-	return project_versions
+	return projectVersions
 }
