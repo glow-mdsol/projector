@@ -335,9 +335,9 @@ func writeLastProjectVersions(lpv map[string][]LastProjectVersion, threshold int
 }
 
 // write the Subject Counts
-func writeLastProjectVersion(url string, threshold int, project_versions []LastProjectVersion, wbk *xlsx.File) {
+func writeLastProjectVersion(url string, threshold int, projectVersions []LastProjectVersion, wbk *xlsx.File) {
 
-	tab_name := fmt.Sprintf("Last - %s", url)
+	tabName := fmt.Sprintf("Last - %s", url)
 	headers := []string{"Project Name", "CRF Version ID", "Subject Count",
 		"Total Checks",
 		"Total Checks (Field)",
@@ -353,86 +353,86 @@ func writeLastProjectVersion(url string, threshold int, project_versions []LastP
 	}
 
 	// create the sheet
-	sheet, created := getOrAddSheet(wbk, tab_name)
+	sheet, created := getOrAddSheet(wbk, tabName)
 	if created {
 		// Add the headers
 		writeHeaderRow(headers, sheet)
 	}
 
-	for _, last_project_version := range project_versions {
+	for _, lastProjectVersion := range projectVersions {
 		// Build the summary counts
 		var cell *xlsx.Cell
 		// Rows
 		row := sheet.AddRow()
 		// Project Name
 		cell = row.AddCell()
-		cell.SetString(last_project_version.ProjectName)
+		cell.SetString(lastProjectVersion.ProjectName)
 		// CRF Version ID
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.CRFVersionID)
+		cell.SetInt(lastProjectVersion.CRFVersionID)
 		// Subject Count
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.SubjectCount)
+		cell.SetInt(lastProjectVersion.SubjectCount)
 		// Total Checks
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.TotalCount)
+		cell.SetInt(lastProjectVersion.TotalCount)
 		// Total Field Checks
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldTotal)
+		cell.SetInt(lastProjectVersion.FieldTotal)
 		// Total Field Checks Fired
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldTotalFired)
+		cell.SetInt(lastProjectVersion.FieldTotalFired)
 		// Total Field Checks Not Fired
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldTotalNotFired)
+		cell.SetInt(lastProjectVersion.FieldTotalNotFired)
 		// Percentage Field Checks Fired
 		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.FieldPercentageFired, "0.00%")
+		cell.SetFloatWithFormat(lastProjectVersion.FieldPercentageFired, "0.00%")
 		// Percentage Field Checks Not Fired
 		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.FieldPercentageNotFired, "0.00%")
+		cell.SetFloatWithFormat(lastProjectVersion.FieldPercentageNotFired, "0.00%")
 		// Total Field Checks with Change
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldChanged)
+		cell.SetInt(lastProjectVersion.FieldChanged)
 		// Total Field Checks with No Change
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.FieldNotChanged)
+		cell.SetInt(lastProjectVersion.FieldNotChanged)
 		// Percentage Field Checks Leading to Data Change
 		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.FieldPercentageChanged, "0.00%")
+		cell.SetFloatWithFormat(lastProjectVersion.FieldPercentageChanged, "0.00%")
 		// Percentage Field Checks Leading to No Data Change
 		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.FieldPercentageNotChanged, "0.00%")
+		cell.SetFloatWithFormat(lastProjectVersion.FieldPercentageNotChanged, "0.00%")
 		// Total Prog Checks
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgTotal)
+		cell.SetInt(lastProjectVersion.ProgTotal)
 		// Total Prog Checks Fired
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgTotalFired)
+		cell.SetInt(lastProjectVersion.ProgTotalFired)
 		// Total Prog Checks Not Fired
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgTotalNotFired)
+		cell.SetInt(lastProjectVersion.ProgTotalNotFired)
 		// Percentage Prog Checks Fired
 		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.ProgPercentageFired, "0.00%")
+		cell.SetFloatWithFormat(lastProjectVersion.ProgPercentageFired, "0.00%")
 		// Percentage Prog Checks Not Fired
 		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.ProgPercentageNotFired, "0.00%")
+		cell.SetFloatWithFormat(lastProjectVersion.ProgPercentageNotFired, "0.00%")
 		// Total Prog Checks with Change
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgChanged)
+		cell.SetInt(lastProjectVersion.ProgChanged)
 		// Total Prog Checks with No Change
 		cell = row.AddCell()
-		cell.SetInt(last_project_version.ProgNotChanged)
+		cell.SetInt(lastProjectVersion.ProgNotChanged)
 		// Percentage Prog Checks Leading to Data Change
 		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.ProgPercentageChanged, "0.00%")
+		cell.SetFloatWithFormat(lastProjectVersion.ProgPercentageChanged, "0.00%")
 		// Percentage Prog Checks Leading to No Data Change
 		cell = row.AddCell()
-		cell.SetFloatWithFormat(last_project_version.ProgPercentageNotChanged, "0.00%")
+		cell.SetFloatWithFormat(lastProjectVersion.ProgPercentageNotChanged, "0.00%")
 	}
 	// write the summary counts
-	writeSummaryCounts(threshold, project_versions, sheet)
+	writeSummaryCounts(threshold, projectVersions, sheet)
 
 }
 
@@ -463,6 +463,10 @@ func writeTotalSummaryCounts(summaryCounts []SummaryCounts, sheet *xlsx.Sheet) {
 	}
 	writeHeaderRow(headers, sheet)
 	for _, summary := range summaryCounts {
+		// no studies above the threshold
+		if summary.RecordCount == 0 {
+			continue
+		}
 		// Add a row
 		row := sheet.AddRow()
 		for i := 0; i < 22; i++ {
@@ -607,6 +611,10 @@ func writeAverageSummaryCounts(summaryCounts []SummaryCounts, sheet *xlsx.Sheet)
 	}
 	writeHeaderRow(headers, sheet)
 	for _, summary := range summaryCounts {
+		// no studies above the threshold
+		if summary.RecordCount == 0 {
+			continue
+		}
 		// Add a row
 		row := sheet.AddRow()
 		for i := 0; i < 22; i++ {
@@ -754,8 +762,9 @@ func writeNotes(sheet *xlsx.Sheet) {
 
 }
 
-func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersion, sheet *xlsx.Sheet) {
-	if len(project_versions) == 0 {
+func writeSummaryCounts(thresholdLevel int, projectVersions []LastProjectVersion, sheet *xlsx.Sheet) {
+	// No matching versions
+	if len(projectVersions) == 0 {
 		return
 	}
 	// Count holders
@@ -765,24 +774,24 @@ func writeSummaryCounts(thresholdLevel int, project_versions []LastProjectVersio
 	for i, threshold := range thresholds {
 		// add a value for
 		summaryCounts = append(summaryCounts, SummaryCounts{})
-		for _, last_project_version := range project_versions {
+		for _, lastProjectVersion := range projectVersions {
 			// filtered set of counts
-			if last_project_version.SubjectCount > threshold {
+			if lastProjectVersion.SubjectCount > threshold {
 				//log.Println("Adding counts for ", last_project_version.ProjectName,"with count",last_project_version.SubjectCount, "with threshold",threshold)
 				summaryCounts[i].RecordCount += 1
 				summaryCounts[i].Threshold = threshold
-				summaryCounts[i].SubjectCount += last_project_version.SubjectCount
-				summaryCounts[i].TotalEdits += last_project_version.TotalCount
-				summaryCounts[i].TotalFldEdits += last_project_version.FieldTotal
-				summaryCounts[i].TotalFldEditsFired += last_project_version.FieldTotalFired
-				summaryCounts[i].TotalFldEditsUnfired += last_project_version.FieldTotalNotFired
-				summaryCounts[i].TotalFldWithChange += last_project_version.FieldChanged
-				summaryCounts[i].TotalFldWithNoChange += last_project_version.FieldNotChanged
-				summaryCounts[i].TotalPrgEdits += last_project_version.ProgTotal
-				summaryCounts[i].TotalPrgEditsFired += last_project_version.ProgTotalFired
-				summaryCounts[i].TotalPrgEditsUnfired += last_project_version.ProgTotalNotFired
-				summaryCounts[i].TotalPrgWithChange += last_project_version.ProgChanged
-				summaryCounts[i].TotalPrgWithNoChange += last_project_version.ProgNotChanged
+				summaryCounts[i].SubjectCount += lastProjectVersion.SubjectCount
+				summaryCounts[i].TotalEdits += lastProjectVersion.TotalCount
+				summaryCounts[i].TotalFldEdits += lastProjectVersion.FieldTotal
+				summaryCounts[i].TotalFldEditsFired += lastProjectVersion.FieldTotalFired
+				summaryCounts[i].TotalFldEditsUnfired += lastProjectVersion.FieldTotalNotFired
+				summaryCounts[i].TotalFldWithChange += lastProjectVersion.FieldChanged
+				summaryCounts[i].TotalFldWithNoChange += lastProjectVersion.FieldNotChanged
+				summaryCounts[i].TotalPrgEdits += lastProjectVersion.ProgTotal
+				summaryCounts[i].TotalPrgEditsFired += lastProjectVersion.ProgTotalFired
+				summaryCounts[i].TotalPrgEditsUnfired += lastProjectVersion.ProgTotalNotFired
+				summaryCounts[i].TotalPrgWithChange += lastProjectVersion.ProgChanged
+				summaryCounts[i].TotalPrgWithNoChange += lastProjectVersion.ProgNotChanged
 			}
 		}
 	}
