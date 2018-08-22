@@ -6,6 +6,31 @@ import (
 	"strings"
 )
 
+func listURLs(db *sqlx.DB) (urls []string, err error) {
+	q := `SELECT url, alternate_url FROM rave_url ORDER BY url, alternate_url`
+	rows, err := db.Queryx(q)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	// iterate over rows
+	for rows.Next() {
+		var (
+			mainUrl string
+			altUrl  string
+		)
+		if err = rows.Scan(&mainUrl, &altUrl); err != nil {
+			return
+		}
+		if altUrl != "" {
+			urls = append(urls, altUrl)
+		} else {
+			urls = append(urls, mainUrl)
+		}
+	}
+	return
+}
+
 func doesPatternMatch(pattern string, db *sqlx.DB) bool {
 	q := `SELECT COUNT(*) FROM rave_url
 	WHERE rave_url.url LIKE '%' || $1 || '%' OR rave_url.alternate_url LIKE '%' || $1 || '%'`
