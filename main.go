@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/tealeg/xlsx"
+	"os"
 	"strings"
 )
 
@@ -23,10 +24,21 @@ func (i *arrayFlags) Set(value string) error {
 	return nil
 }
 
+func getURLs(db *sqlx.DB) {
+	urls, err := listURLs(db)
+	if err != nil {
+		log.Fatal("Unable to list URLs: ", err)
+	}
+	for _, url := range urls {
+		fmt.Println(url)
+	}
+}
+
 func main() {
-	var patternsArray arrayFlags
+	var patternsArray, raveUrls arrayFlags
 	flag.Var(&patternsArray, "pattern", "Supply the URL patterns")
-	raveUrl := flag.String("url", "", "Specific Rave URL")
+	flag.Var(&raveUrls, "url", "Specific Rave URLs")
+	dumpURLs := flag.Bool("listurls", false, "Dump the list of urls")
 	hostName := flag.String("dbhost", "localhost", "Database Host")
 	dbName := flag.String("dbname", "editsfive", "Database Name")
 	dbUser := flag.String("user", "edits", "Database User")
@@ -34,7 +46,7 @@ func main() {
 	fileName := flag.String("output", "report", "Output File Name")
 	threshold := flag.Int("threshold", 10, "Threshold for Reporting")
 	flag.Parse()
-	if len(patternsArray) == 0 && *raveUrl == "" {
+	if *dumpURLs == false && (len(patternsArray) == 0 && len(raveUrls) == 0) {
 		log.Fatal("Need to specify the patterns or url")
 	}
 	var dataSourceName = fmt.Sprintf("host=%s user=%s dbname=%s password=%s sslmode=disable",
@@ -48,13 +60,20 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if *dumpURLs == true {
+		getURLs(dbConn)
+		os.Exit(0)
+	}
 	workbook := xlsx.NewFile()
-	if *raveUrl != "" {
-		if !strings.HasSuffix(*raveUrl, ".mdsol.com") {
-			// if we don't end with mdsol.com, then set it
-			patternsArray.Set(fmt.Sprintf("%s.mdsol.com", *raveUrl))
-		} else {
-			patternsArray.Set(*raveUrl)
+	if len(raveUrls) != 0 {
+		for _, raveUrl := range raveUrls {
+			if !strings.HasSuffix(raveUrl, ".mdsol.com") {
+				// if we don't end with mdsol.com, then set it
+				patternsArray.Set(fmt.Sprintf("%s.mdsol.com", raveUrl))
+			} else {
+				patternsArray.Set(raveUrl)
+			}
+
 		}
 	}
 	for _, urlPattern := range patternsArray {
@@ -87,8 +106,16 @@ func main() {
 		log.Println("Writing Last Project Version Data")
 		writeLastProjectVersions(lastVersions, *threshold, workbook)
 	}
-	// make up the prefix using the range of patterns
-	prefix := strings.Join(patternsArray, "_")
+	// make up the prefix using the range of patterns, removing the extraneous domains
+	var prefixes []string
+	for _, prefix := range patternsArray {
+		if strings.HasSuffix(prefix, ".mdsol.com") {
+			prefixes = append(prefixes, strings.Split(prefix, ".")[0])
+		} else {
+			prefixes = append(prefixes, prefix)
+		}
+	}
+	prefix := strings.Join(prefixes, "_")
 	filename := fmt.Sprintf("%s_%s_%s.xlsx", prefix, *fileName, time.Now().Format("2006-01-02"))
 	workbook.Save(filename)
 }
