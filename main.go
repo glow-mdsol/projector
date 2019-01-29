@@ -6,11 +6,12 @@ import (
 	"log"
 	"time"
 
+	"os"
+	"strings"
+
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/tealeg/xlsx"
-	"os"
-	"strings"
 )
 
 type arrayFlags []string
@@ -66,12 +67,12 @@ func main() {
 	}
 	workbook := xlsx.NewFile()
 	if len(raveUrls) != 0 {
-		for _, raveUrl := range raveUrls {
-			if !strings.HasSuffix(raveUrl, ".mdsol.com") {
+		for _, raveURL := range raveUrls {
+			if !strings.HasSuffix(raveURL, ".mdsol.com") {
 				// if we don't end with mdsol.com, then set it
-				patternsArray.Set(fmt.Sprintf("%s.mdsol.com", raveUrl))
+				patternsArray.Set(fmt.Sprintf("%s.mdsol.com", raveURL))
 			} else {
-				patternsArray.Set(raveUrl)
+				patternsArray.Set(raveURL)
 			}
 
 		}
@@ -117,5 +118,8 @@ func main() {
 	}
 	prefix := strings.Join(prefixes, "_")
 	filename := fmt.Sprintf("%s_%s_%s.xlsx", prefix, *fileName, time.Now().Format("2006-01-02"))
-	workbook.Save(filename)
+	err = workbook.Save(filename)
+	if err != nil {
+		log.Fatalf("Saving file failed: %s", err)
+	}
 }
