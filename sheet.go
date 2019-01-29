@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/tealeg/xlsx"
 	"log"
 	"sort"
+
+	"github.com/tealeg/xlsx"
 )
 
 func getOrAddSheet(wbk *xlsx.File, name string) (*xlsx.Sheet, bool) {
@@ -68,13 +69,19 @@ func writeProjectVersion(prj ProjectVersion, row *xlsx.Row) {
 	cell = row.AddCell()
 	cell.SetInt(prj.SubjectCount)
 	// Active Edits
-	writeMetrics(prj.ActiveEditsOnly, row)
+	cell = row.AddCell()
+	cell.SetInt(prj.ActiveEditCount)
 	// Inactive Edits
-	writeMetrics(prj.InactiveEditsOnly, row)
+	cell = row.AddCell()
+	cell.SetInt(prj.InactiveEditCount)
+	// Write the metrics out
+	writeMetrics(prj.ActiveEditsOnly, row)
+	// Inactive Edits - Removed
+	// writeMetrics(prj.InactiveEditsOnly, row)
 }
 
 // write a set of metrics to the file
-func writeMetrics(rec Record, row *xlsx.Row) {
+func writeMetrics(rec *Record, row *xlsx.Row) {
 	var cell *xlsx.Cell
 	// Total Edits (fld)
 	cell = row.AddCell()
@@ -84,7 +91,7 @@ func writeMetrics(rec Record, row *xlsx.Row) {
 	cell.SetInt(rec.TotalFieldEditsFired)
 	// Total Edits Unfired (fld)
 	cell = row.AddCell()
-	cell.SetInt(rec.TotalFieldEdits - rec.TotalFieldEditsFired)
+	cell.SetInt(rec.TotalFieldEditsNotFired)
 	// %ge Edits Fired (fld)
 	cell = row.AddCell()
 	if rec.TotalFieldEdits == 0 {
@@ -97,7 +104,7 @@ func writeMetrics(rec Record, row *xlsx.Row) {
 	if rec.TotalFieldEdits == 0 {
 		cell.SetFloat(0.0)
 	} else {
-		cell.SetFloatWithFormat(float64(rec.TotalFieldEdits-rec.TotalFieldEditsFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
+		cell.SetFloatWithFormat(float64(rec.TotalFieldEditsNotFired)/float64(rec.TotalFieldEdits)*100.0, "#,##0.00;(#,##0.00)")
 	}
 	// Total Edits (prg)
 	cell = row.AddCell()
@@ -107,23 +114,23 @@ func writeMetrics(rec Record, row *xlsx.Row) {
 	cell.SetInt(rec.TotalProgEditsWithOpenQuery)
 	// Total Edits Fired (prg)
 	cell = row.AddCell()
-	cell.SetInt(rec.TotalProgWithOpenQueryFired)
+	cell.SetInt(rec.TotalProgEditsFired)
 	// Total Edits Unfired (prg)
 	cell = row.AddCell()
-	cell.SetInt(rec.TotalProgEditsWithOpenQuery - rec.TotalProgWithOpenQueryFired)
+	cell.SetInt(rec.TotalProgEditsNotFired)
 	// %ge Edits Fired (prg)
 	cell = row.AddCell()
 	if rec.TotalProgEditsWithOpenQuery == 0 {
 		cell.SetFloat(0.0)
 	} else {
-		cell.SetFloatWithFormat(float64(rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
+		cell.SetFloatWithFormat(float64(rec.TotalProgEditsFired)/float64(rec.TotalProgEdits)*100.0, "#,##0.00;(#,##0.00)")
 	}
 	// %ge Edits Unfired (prg)
 	cell = row.AddCell()
 	if rec.TotalProgEditsWithOpenQuery == 0 {
 		cell.SetFloat(0.0)
 	} else {
-		cell.SetFloatWithFormat(float64(rec.TotalProgEditsWithOpenQuery-rec.TotalProgWithOpenQueryFired)/float64(rec.TotalProgEditsWithOpenQuery)*100.0, "#,##0.00;(#,##0.00)")
+		cell.SetFloatWithFormat(float64(rec.TotalProgEditsNotFired)/float64(rec.TotalProgEdits)*100.0, "#,##0.00;(#,##0.00)")
 	}
 	// Total Queries (fld)
 	cell = row.AddCell()
@@ -132,61 +139,73 @@ func writeMetrics(rec Record, row *xlsx.Row) {
 	cell = row.AddCell()
 	cell.SetInt(rec.TotalProgQueries)
 	// Total Queries With OpenQuery (prg)
-	cell = row.AddCell()
-	cell.SetInt(rec.TotalProgQueriesWithOpenQuery)
+	//cell = row.AddCell()
+	//cell.SetInt(rec.TotalProgQueriesWithOpenQuery)
 }
 
 // write the Subject Counts
-func writeSubjectCounts(subject_counts []SubjectCount, wbk *xlsx.File) {
-	tab_name := "Subject Counts"
+func writeSubjectCounts(subjectCounts []SubjectCount, wbk *xlsx.File) {
+	tabName := "Subject Counts"
 	headers := []string{"Rave URL", "Project Name", "Subject Count", "Date Updated"}
 
 	// create the sheet
-	sheet, created := getOrAddSheet(wbk, tab_name)
+	sheet, created := getOrAddSheet(wbk, tabName)
 	if created {
 		// Add the headers
 		writeHeaderRow(headers, sheet)
 	}
-	auto_filter := new(xlsx.AutoFilter)
-	auto_filter.TopLeftCell = "A1"
-	auto_filter.BottomRightCell = "D1"
-	sheet.AutoFilter = auto_filter
+	autoFilter := new(xlsx.AutoFilter)
+	autoFilter.TopLeftCell = "A1"
+	autoFilter.BottomRightCell = "D1"
+	sheet.AutoFilter = autoFilter
 
 	// default widths
-	url_length := 12
-	project_length := 12
+	urlLength := 12
+	projectLength := 12
+	dateLength := 18.5
 
-	for _, subject_count := range subject_counts {
+	for _, subjectCount := range subjectCounts {
 		var cell *xlsx.Cell
 		// Rows
 		row := sheet.AddRow()
 		cell = row.AddCell()
-		cell.SetString(subject_count.URL)
+		cell.SetString(subjectCount.URL)
 		cell = row.AddCell()
-		cell.SetString(subject_count.ProjectName)
+		cell.SetString(subjectCount.ProjectName)
 		cell = row.AddCell()
-		if subject_count.SubjectCount.Valid {
+		if subjectCount.SubjectCount.Valid {
 
-			cell.SetInt(int(subject_count.SubjectCount.Int64))
+			cell.SetInt(int(subjectCount.SubjectCount.Int64))
 		} else {
 			cell.SetString("-")
 		}
 		cell = row.AddCell()
-		if subject_count.RefreshDate.Valid {
-			cell.SetDateTime(subject_count.RefreshDate.Time)
+		if subjectCount.RefreshDate.Valid {
+			cell.SetDateTime(subjectCount.RefreshDate.Time)
+
 		} else {
 			cell.SetString("-")
 		}
-		if len(subject_count.URL) > url_length {
-			url_length = len(subject_count.URL)
+		if len(subjectCount.URL) > urlLength {
+			urlLength = len(subjectCount.URL)
 		}
-		if len(subject_count.ProjectName) > project_length {
-			project_length = len(subject_count.ProjectName)
+		if len(subjectCount.ProjectName) > projectLength {
+			projectLength = len(subjectCount.ProjectName)
 		}
 
 	}
-	sheet.SetColWidth(0, 0, float64(url_length))
-	sheet.SetColWidth(1, 1, float64(project_length))
+	err := sheet.SetColWidth(0, 0, float64(urlLength))
+	if err != nil {
+		log.Printf("Error setting column width: %s", err)
+	}
+	err = sheet.SetColWidth(1, 1, float64(projectLength))
+	if err != nil {
+		log.Printf("Error setting column width: %s", err)
+	}
+	err = sheet.SetColWidth(3, 3, float64(dateLength))
+	if err != nil {
+		log.Printf("Error setting column width: %s", err)
+	}
 }
 
 // write study metrics
@@ -196,34 +215,36 @@ func writeStudyMetrics(data map[string][]ProjectVersion, wbk *xlsx.File) {
 		"CRF Version",
 		"Last Version",
 		"Subject Count",
-		"Active - Total Edits (fld)",
-		"Active - Total Edits Fired (fld)",
-		"Active - Total Edits Unfired (fld)",
-		"Active - %ge Edits Fired (fld)",
-		"Active - %ge Edits Unfired (fld)",
-		"Active - Total Edits (prg)",
-		"Active - Total Edits With OpenQuery (prg)",
-		"Active - Total Edits Fired (prg)",
-		"Active - Total Edits Unfired (prg)",
-		"Active - %ge Edits Fired (prg)",
-		"Active - %ge Edits Unfired (prg)",
-		"Active - Total Queries (fld)",
-		"Active - Total Queries (prg)",
-		"Active - Total Queries With OpenQuery (prg)",
-		"Inactive - Total Edits (fld)",
-		"Inactive - Total Edits Fired (fld)",
-		"Inactive - Total Edits Unfired (fld)",
-		"Inactive - %ge Edits Fired (fld)",
-		"Inactive - %ge Edits Unfired (fld)",
-		"Inactive - Total Edits (prg)",
-		"Inactive - Total Edits With OpenQuery (prg)",
-		"Inactive - Total Edits Fired (prg)",
-		"Inactive - Total Edits Unfired (prg)",
-		"Inactive - %ge Edits Fired (prg)",
-		"Inactive - %ge Edits Unfired (prg)",
-		"Inactive - Total Queries (fld)",
-		"Inactive - Total Queries (prg)",
-		"Inactive - Total Queries With OpenQuery (prg)",
+		"Active Edits",
+		"Inactive Edits",
+		"Total Edits (fld)",
+		"Total Edits Fired (fld)",
+		"Total Edits Unfired (fld)",
+		"%ge Edits Fired (fld)",
+		"%ge Edits Unfired (fld)",
+		"Total Edits (prg)",
+		"Total Edits With OpenQuery (prg)",
+		"Total Edits Fired (prg)",
+		"Total Edits Unfired (prg)",
+		"%ge Edits Fired (prg)",
+		"%ge Edits Unfired (prg)",
+		"Total Queries (fld)",
+		"Total Queries (prg)",
+		//"Total Queries With OpenQuery (prg)",
+		// "Inactive - Total Edits (fld)",
+		// "Inactive - Total Edits Fired (fld)",
+		// "Inactive - Total Edits Unfired (fld)",
+		// "Inactive - %ge Edits Fired (fld)",
+		// "Inactive - %ge Edits Unfired (fld)",
+		// "Inactive - Total Edits (prg)",
+		// "Inactive - Total Edits With OpenQuery (prg)",
+		// "Inactive - Total Edits Fired (prg)",
+		// "Inactive - Total Edits Unfired (prg)",
+		// "Inactive - %ge Edits Fired (prg)",
+		// "Inactive - %ge Edits Unfired (prg)",
+		// "Inactive - Total Queries (fld)",
+		// "Inactive - Total Queries (prg)",
+		// "Inactive - Total Queries With OpenQuery (prg)",
 		//"Total Edits Fired With No Change (fld)",
 		//"Total Edits Fired With No Change (prg)"
 	}
@@ -240,17 +261,17 @@ func writeStudyMetrics(data map[string][]ProjectVersion, wbk *xlsx.File) {
 			// Add the headers
 			writeHeaderRow(headers, sheet)
 		}
-		auto_filter := new(xlsx.AutoFilter)
-		auto_filter.TopLeftCell = "A1"
-		auto_filter.BottomRightCell = "AG1"
-		sheet.AutoFilter = auto_filter
+		autoFilter := new(xlsx.AutoFilter)
+		autoFilter.TopLeftCell = "A1"
+		autoFilter.BottomRightCell = "T1"
+		sheet.AutoFilter = autoFilter
 
 		//log.Println("Created Sheet for URL ", url)
 
-		for _, project_version := range data[url] {
+		for _, projectVersion := range data[url] {
 			// Add the row for Checks
 			row := sheet.AddRow()
-			writeProjectVersion(project_version, row)
+			writeProjectVersion(projectVersion, row)
 		}
 	}
 }
@@ -259,6 +280,9 @@ func writeUselessEdits(edits []UnusedEdit, wbk *xlsx.File) {
 	headers := []string{"Study URL",
 		"Project Name",
 		"Edit Check Name",
+		"Form OID",
+		"Field OID",
+		"Variable OID",
 		"Times Used",
 		"OpenQuery Check?",
 		"Custom Function?",
@@ -268,33 +292,33 @@ func writeUselessEdits(edits []UnusedEdit, wbk *xlsx.File) {
 		"Range check?",
 	}
 
-	tab_name := "Unused Edits"
+	tabName := "Unused Edits"
 
 	// create the sheet
-	sheet, created := getOrAddSheet(wbk, tab_name)
+	sheet, created := getOrAddSheet(wbk, tabName)
 	if created {
 		// Add the headers
 		writeHeaderRow(headers, sheet)
 	}
-	auto_filter := new(xlsx.AutoFilter)
-	auto_filter.TopLeftCell = "A1"
-	auto_filter.BottomRightCell = "J1"
-	sheet.AutoFilter = auto_filter
+	autoFilter := new(xlsx.AutoFilter)
+	autoFilter.TopLeftCell = "A1"
+	autoFilter.BottomRightCell = "M1"
+	sheet.AutoFilter = autoFilter
 
-	url_length := 12
-	project_length := 12
-	check_length := 12
+	urlLength := 12
+	projectLength := 12
+	checkLength := 12
 
 	// Export the results
 	for _, edit := range edits {
-		if len(edit.URL) > url_length {
-			url_length = len(edit.URL)
+		if len(edit.URL) > urlLength {
+			urlLength = len(edit.URL)
 		}
-		if len(edit.ProjectName) > project_length {
-			project_length = len(edit.ProjectName)
+		if len(edit.ProjectName) > projectLength {
+			projectLength = len(edit.ProjectName)
 		}
-		if len(edit.EditCheckName) > check_length {
-			check_length = len(edit.EditCheckName)
+		if len(edit.EditCheckName) > checkLength {
+			checkLength = len(edit.EditCheckName)
 		}
 		var cell *xlsx.Cell
 		// Rows
@@ -305,6 +329,12 @@ func writeUselessEdits(edits []UnusedEdit, wbk *xlsx.File) {
 		cell.SetString(edit.ProjectName)
 		cell = row.AddCell()
 		cell.SetString(edit.EditCheckName)
+		cell = row.AddCell()
+		cell.SetString(edit.FormOID)
+		cell = row.AddCell()
+		cell.SetString(edit.FieldOID)
+		cell = row.AddCell()
+		cell.SetString(edit.VariableOID)
 		cell = row.AddCell()
 		cell.SetInt(edit.UsageCount)
 		cell = row.AddCell()
@@ -320,9 +350,19 @@ func writeUselessEdits(edits []UnusedEdit, wbk *xlsx.File) {
 		cell = row.AddCell()
 		cell.SetString(edit.RangeCheck)
 	}
-	sheet.SetColWidth(0, 0, float64(url_length))
-	sheet.SetColWidth(1, 1, float64(project_length))
-	sheet.SetColWidth(2, 2, float64(check_length))
+	err := sheet.SetColWidth(0, 0, float64(urlLength))
+	if err != nil {
+		fmt.Printf("Error setting the Column: %s", err)
+	}
+	err = sheet.SetColWidth(1, 1, float64(projectLength))
+	if err != nil {
+		fmt.Printf("Error setting the Column: %s", err)
+	}
+	err = sheet.SetColWidth(2, 2, float64(checkLength))
+	if err != nil {
+		fmt.Printf("Error setting the Column: %s", err)
+	}
+
 }
 
 // write out the data for the LastProjectVersion
@@ -338,18 +378,28 @@ func writeLastProjectVersions(lpv map[string][]LastProjectVersion, threshold int
 func writeLastProjectVersion(url string, threshold int, projectVersions []LastProjectVersion, wbk *xlsx.File) {
 
 	tabName := fmt.Sprintf("Last - %s", url)
-	headers := []string{"Project Name", "CRF Version ID", "Subject Count",
+	headers := []string{"Project Name",
+		"CRF Version ID",
+		"Subject Count",
 		"Total Checks",
 		"Total Checks (Field)",
-		"Total Checks Fired (Field)", "Total Checks Not Fired (Field)",
-		"%ge Checks Fired (Field)", "%ge Checks Not Fired (Field)",
-		"Checks with Change (Field)", "Checks with No Change (Field)",
-		"%ge Checks with Change (Field)", "%ge Checks with No Change (Field)",
+		"Total Checks Fired (Field)",
+		"Total Checks Not Fired (Field)",
+		"%ge Checks Fired (Field)",
+		"%ge Checks Not Fired (Field)",
+		"Checks with Change (Field)",
+		"Checks with No Change (Field)",
+		"%ge Checks with Change (Field)",
+		"%ge Checks with No Change (Field)",
 		"Total Checks (Prog)",
-		"Total Checks Fired (Prog)", "Total Checks Not Fired (Prog)",
-		"%ge Checks Fired (Prog)", "%ge Checks Not Fired (Prog)",
-		"Checks with Change (Prog)", "Checks with No Change (Prog)",
-		"%ge Checks with Change (Prog)", "%ge Checks with No Change (Prog)",
+		"Total Checks Fired (Prog)",
+		"Total Checks Not Fired (Prog)",
+		"%ge Checks Fired (Prog)",
+		"%ge Checks Not Fired (Prog)",
+		"Checks with Change (Prog)",
+		"Checks with No Change (Prog)",
+		"%ge Checks with Change (Prog)",
+		"%ge Checks with No Change (Prog)",
 	}
 
 	// create the sheet
@@ -778,7 +828,7 @@ func writeSummaryCounts(thresholdLevel int, projectVersions []LastProjectVersion
 			// filtered set of counts
 			if lastProjectVersion.SubjectCount > threshold {
 				//log.Println("Adding counts for ", last_project_version.ProjectName,"with count",last_project_version.SubjectCount, "with threshold",threshold)
-				summaryCounts[i].RecordCount += 1
+				summaryCounts[i].RecordCount++
 				summaryCounts[i].Threshold = threshold
 				summaryCounts[i].SubjectCount += lastProjectVersion.SubjectCount
 				summaryCounts[i].TotalEdits += lastProjectVersion.TotalCount
