@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"strings"
 
 	"github.com/lib/pq"
 )
@@ -36,7 +37,7 @@ type Record struct {
 	URL                                string
 	URLID                              int           `db:"url_id"`
 	ProjectName                        string        `db:"project_name"`
-	CRFVersionID                       string        `db:"crf_version_id"`
+	CRFVersionID                       int           `db:"crf_version_id"`
 	LastVersion                        bool          `db:"last_version"`
 	SubjectCount                       sql.NullInt64 `db:"subject_count"`
 	CheckStatus                        string        `db:"check_status"`
@@ -50,6 +51,8 @@ type Record struct {
 	TotalFieldQueries                  int
 	RawTotalProgQueries                sql.NullInt64 `db:"total_queries_prg"`
 	TotalProgQueries                   int
+	RawTotalQueriesOpenQuery           sql.NullInt64 `db:"total_queries_open_query"`
+	TotalQueriesOpenQuery              int
 	TotalFieldEditsWithOpenQuery       int           `db:"total_edits_query_fld"`
 	TotalProgEditsWithOpenQuery        int           `db:"total_edits_query_prg"`
 	RawTotalFieldQueriesWithOpenQuery  sql.NullInt64 `db:"total_queries_query_fld"`
@@ -72,6 +75,16 @@ type Record struct {
 	TotalFieldEditsFiredWithNoChange   int `db:"fired_no_change_fld"`
 	TotalProgEditsFiredWithChange      int `db:"fired_change_prg"`
 	TotalProgEditsFiredWithNoChange    int `db:"fired_no_change_prg"`
+	FieldPercentageFired               float64
+	FieldPercentageNotFired            float64
+	FieldPercentageChanged             float64
+	FieldPercentageNotChanged          float64
+	ProgPercentageFired                float64
+	ProgPercentageNotFired             float64
+	ProgPercentageChanged              float64
+	ProgPercentageNotChanged           float64
+	TotalFieldEditsOpen                int `db:"open_edits_sys"`
+	TotalProgEditsOpen                 int `db:"open_edits_prg"`
 }
 
 // SummaryCounts represents the Structure for the computed stats
@@ -83,57 +96,18 @@ type SummaryCounts struct {
 	TotalFldEdits        int
 	TotalFldEditsFired   int
 	TotalFldEditsUnfired int
+	TotalFldEditsOpen    int
 	TotalFldWithChange   int
 	TotalFldWithNoChange int
 	TotalPrgEdits        int
 	TotalPrgEditsFired   int
 	TotalPrgEditsUnfired int
+	TotalPrgEditsOpen    int
 	TotalPrgWithChange   int
 	TotalPrgWithNoChange int
 }
 
-// ProjectVersion represents the structure for an individual Project Version
-type ProjectVersion struct {
-	URL               string
-	URLID             int
-	ProjectName       string
-	CRFVersionID      string
-	ActiveEditsOnly   *Record
-	InactiveEditsOnly *Record
-	LastVersion       bool
-	SubjectCount      int
-	ActiveEditCount   int
-	InactiveEditCount int
-}
-
-// LastProjectVersion represents the stats for the last Project Version
-type LastProjectVersion struct {
-	ProjectName               string `db:"project_name"`
-	ProjectID                 int    `db:"project_id"`
-	CRFVersionID              int    `db:"crf_version_id"`
-	SubjectCount              int    `db:"subject_count"`
-	TotalCount                int    `db:"total_count"`
-	FieldTotal                int    `db:"fld_total"`
-	FieldTotalFired           int    `db:"fld_total_fired"`
-	FieldTotalNotFired        int    `db:"fld_total_not_fired"`
-	FieldNotChanged           int    `db:"fld_no_change_count"`
-	FieldChanged              int    `db:"fld_change_count"`
-	ProgTotal                 int    `db:"prg_total"`
-	ProgTotalFired            int    `db:"prg_total_fired"`
-	ProgTotalNotFired         int    `db:"prg_total_not_fired"`
-	ProgNotChanged            int    `db:"prg_no_change_count"`
-	ProgChanged               int    `db:"prg_change_count"`
-	FieldPercentageFired      float64
-	FieldPercentageNotFired   float64
-	FieldPercentageChanged    float64
-	FieldPercentageNotChanged float64
-	ProgPercentageFired       float64
-	ProgPercentageNotFired    float64
-	ProgPercentageChanged     float64
-	ProgPercentageNotChanged  float64
-}
-
-func (pv *LastProjectVersion) calculatePercentages() {
+func (pv *Record) calculatePercentages() {
 	// Gate the counts
 	pv.FieldPercentageFired = 0.0
 	pv.FieldPercentageNotFired = 0.0
@@ -144,74 +118,25 @@ func (pv *LastProjectVersion) calculatePercentages() {
 	pv.ProgPercentageChanged = 0.0
 	pv.ProgPercentageNotChanged = 0.0
 
-	if pv.FieldTotal > 0 {
-		pv.FieldPercentageFired = float64(pv.FieldTotalFired) / float64(pv.FieldTotal)
-		pv.FieldPercentageNotFired = float64(pv.FieldTotalNotFired) / float64(pv.FieldTotal)
+	if pv.TotalFieldEdits > 0 {
+		pv.FieldPercentageFired = float64(pv.TotalFieldEditsFired) / float64(pv.TotalFieldEdits)
+		pv.FieldPercentageNotFired = float64(pv.TotalFieldEditsNotFired) / float64(pv.TotalFieldEdits)
 	}
-	if pv.FieldTotalFired > 0 {
-		pv.FieldPercentageChanged = float64(pv.FieldChanged) / float64(pv.FieldTotalFired)
-		pv.FieldPercentageNotChanged = float64(pv.FieldNotChanged) / float64(pv.FieldTotalFired)
+	if pv.TotalFieldEditsFired > 0 {
+		pv.FieldPercentageChanged = float64(pv.TotalFieldEditsFiredWithChange) / float64(pv.TotalFieldEditsFired)
+		pv.FieldPercentageNotChanged = float64(pv.TotalFieldEditsFiredWithNoChange) / float64(pv.TotalFieldEditsFired)
 	}
-	if pv.ProgTotal > 0 {
-		pv.ProgPercentageFired = float64(pv.ProgTotalFired) / float64(pv.ProgTotal)
-		pv.ProgPercentageNotFired = float64(pv.ProgTotalNotFired) / float64(pv.ProgTotal)
+	if pv.TotalProgEdits > 0 {
+		pv.ProgPercentageFired = float64(pv.TotalProgEditsFired) / float64(pv.TotalProgEdits)
+		pv.ProgPercentageNotFired = float64(pv.TotalProgEditsNotFired) / float64(pv.TotalProgEdits)
 	}
-	if pv.ProgTotalFired > 0 {
-		pv.ProgPercentageChanged = float64(pv.ProgChanged) / float64(pv.ProgTotalFired)
-		pv.ProgPercentageNotChanged = float64(pv.ProgNotChanged) / float64(pv.ProgTotalFired)
+	if pv.TotalProgEditsFired > 0 {
+		pv.ProgPercentageChanged = float64(pv.TotalProgEditsFiredWithChange) / float64(pv.TotalProgEditsFired)
+		pv.ProgPercentageNotChanged = float64(pv.TotalProgEditsFiredWithNoChange) / float64(pv.TotalProgEditsFired)
 	}
 }
 
-// func calculateInactiveCounts(pv *ProjectVersion) *ProjectVersion {
-// 	rec := new(Record)
-// 	rec.URL = pv.URL
-// 	rec.ProjectName = pv.ProjectName
-// 	rec.CRFVersionID = pv.CRFVersionID
-// 	rec.CheckStatus = "INACTIVE"
-// 	rec.TotalFieldEdits = pv.AllEdits.TotalFieldEdits - pv.ActiveEditsOnly.TotalFieldEdits
-// 	rec.TotalProgEdits = pv.AllEdits.TotalProgEdits - pv.ActiveEditsOnly.TotalProgEdits
-// 	rec.TotalFieldQueries = pv.AllEdits.TotalFieldQueries - pv.ActiveEditsOnly.TotalFieldQueries
-// 	rec.TotalProgQueries = pv.AllEdits.TotalProgQueries - pv.ActiveEditsOnly.TotalProgQueries
-// 	rec.TotalFieldEditsWithOpenQuery = pv.AllEdits.TotalFieldEditsWithOpenQuery - pv.ActiveEditsOnly.TotalFieldEditsWithOpenQuery
-// 	rec.TotalProgEditsWithOpenQuery = pv.AllEdits.TotalProgEditsWithOpenQuery - pv.ActiveEditsOnly.TotalProgEditsWithOpenQuery
-// 	rec.TotalFieldQueriesWithOpenQuery = pv.AllEdits.TotalFieldQueriesWithOpenQuery - pv.ActiveEditsOnly.TotalFieldQueriesWithOpenQuery
-// 	rec.TotalProgQueriesWithOpenQuery = pv.AllEdits.TotalProgQueriesWithOpenQuery - pv.ActiveEditsOnly.TotalProgQueriesWithOpenQuery
-// 	rec.TotalFieldEditsFired = pv.AllEdits.TotalFieldEditsFired - pv.ActiveEditsOnly.TotalFieldEditsFired
-// 	rec.TotalProgEditsFired = pv.AllEdits.TotalProgEditsFired - pv.ActiveEditsOnly.TotalProgEditsFired
-// 	rec.TotalFieldEditsFired = pv.AllEdits.TotalFieldEditsFired - pv.ActiveEditsOnly.TotalFieldEditsFired
-// 	rec.TotalFieldWithOpenQueryFired = pv.AllEdits.TotalFieldWithOpenQueryFired - pv.ActiveEditsOnly.TotalFieldWithOpenQueryFired
-// 	rec.TotalProgWithOpenQueryFired = pv.AllEdits.TotalProgWithOpenQueryFired - pv.ActiveEditsOnly.TotalProgWithOpenQueryFired
-// 	rec.TotalFieldEditsFiredWithNoChange = pv.AllEdits.TotalFieldEditsFiredWithNoChange - pv.ActiveEditsOnly.TotalFieldEditsFiredWithNoChange
-// 	rec.TotalProgEditsFiredWithNoChange = pv.AllEdits.TotalProgEditsFiredWithNoChange - pv.ActiveEditsOnly.TotalProgEditsFiredWithNoChange
-// 	pv.InactiveEditsOnly = *rec
-// 	return pv
-// }
-
-// func (pv *ProjectVersion) calculateInactiveCounts() {
-// 	rec := new(Record)
-// 	rec.URL = pv.URL
-// 	rec.ProjectName = pv.ProjectName
-// 	rec.CRFVersionID = pv.CRFVersionID
-// 	rec.CheckStatus = "INACTIVE"
-// 	rec.TotalFieldEdits = pv.AllEdits.TotalFieldEdits - pv.ActiveEditsOnly.TotalFieldEdits
-// 	rec.TotalProgEdits = pv.AllEdits.TotalProgEdits - pv.ActiveEditsOnly.TotalProgEdits
-// 	rec.TotalFieldQueries = pv.AllEdits.TotalFieldQueries - pv.ActiveEditsOnly.TotalFieldQueries
-// 	rec.TotalProgQueries = pv.AllEdits.TotalProgQueries - pv.ActiveEditsOnly.TotalProgQueries
-// 	rec.TotalFieldEditsWithOpenQuery = pv.AllEdits.TotalFieldEditsWithOpenQuery - pv.ActiveEditsOnly.TotalFieldEditsWithOpenQuery
-// 	rec.TotalProgEditsWithOpenQuery = pv.AllEdits.TotalProgEditsWithOpenQuery - pv.ActiveEditsOnly.TotalProgEditsWithOpenQuery
-// 	rec.TotalFieldQueriesWithOpenQuery = pv.AllEdits.TotalFieldQueriesWithOpenQuery - pv.ActiveEditsOnly.TotalFieldQueriesWithOpenQuery
-// 	rec.TotalProgQueriesWithOpenQuery = pv.AllEdits.TotalProgQueriesWithOpenQuery - pv.ActiveEditsOnly.TotalProgQueriesWithOpenQuery
-// 	rec.TotalFieldEditsFired = pv.AllEdits.TotalFieldEditsFired - pv.ActiveEditsOnly.TotalFieldEditsFired
-// 	rec.TotalProgEditsFired = pv.AllEdits.TotalProgEditsFired - pv.ActiveEditsOnly.TotalProgEditsFired
-// 	rec.TotalFieldEditsFired = pv.AllEdits.TotalFieldEditsFired - pv.ActiveEditsOnly.TotalFieldEditsFired
-// 	rec.TotalFieldWithOpenQueryFired = pv.AllEdits.TotalFieldWithOpenQueryFired - pv.ActiveEditsOnly.TotalFieldWithOpenQueryFired
-// 	rec.TotalProgWithOpenQueryFired = pv.AllEdits.TotalProgWithOpenQueryFired - pv.ActiveEditsOnly.TotalProgWithOpenQueryFired
-// 	rec.TotalFieldEditsFiredWithNoChange = pv.AllEdits.TotalFieldEditsFiredWithNoChange - pv.ActiveEditsOnly.TotalFieldEditsFiredWithNoChange
-// 	rec.TotalProgEditsFiredWithNoChange = pv.AllEdits.TotalProgEditsFiredWithNoChange - pv.ActiveEditsOnly.TotalProgEditsFiredWithNoChange
-// 	pv.InactiveEditsOnly = *rec
-// }
-
-func fixUpRecord(rec *Record) *Record {
+func (rec *Record) fixUpRecord() {
 	if rec.RawTotalFieldQueriesWithOpenQuery.Valid {
 		rec.TotalFieldQueriesWithOpenQuery = int(rec.RawTotalFieldQueriesWithOpenQuery.Int64)
 	} else {
@@ -252,58 +177,30 @@ func fixUpRecord(rec *Record) *Record {
 	} else {
 		rec.TotalProgWithOpenQueryFired = -1
 	}
-	return rec
+	if rec.RawTotalQueriesOpenQuery.Valid {
+		rec.TotalQueriesOpenQuery = int(rec.RawTotalQueriesOpenQuery.Int64)
+	} else {
+		rec.TotalQueriesOpenQuery = -1
+	}
 }
 
-// func fixUpNullValues(pv *ProjectVersion) *ProjectVersion {
-// 	var activeCount = 0
-// 	var inactiveCount = 0
-// 	pv.ActiveEditsOnly = fixUpRecord(pv.ActiveEditsOnly)
-// 	if pv.InactiveEditsOnly != nil {
-// 		pv.InactiveEditsOnly = fixUpRecord(pv.InactiveEditsOnly)
-// 		if pv.InactiveEditsOnly.TotalProgEdits >= 0 {
-// 			// skip the null values
-// 			inactiveCount += pv.InactiveEditsOnly.TotalProgEdits
-// 		}
-// 		if pv.InactiveEditsOnly.TotalFieldEdits >= 0 {
-// 			// skip the null values
-// 			inactiveCount += pv.InactiveEditsOnly.TotalFieldEdits
-// 		}
-// 	}
-// 	if pv.ActiveEditsOnly.TotalFieldEdits >= 0 {
-// 		activeCount += pv.ActiveEditsOnly.TotalFieldEdits
-// 	}
-// 	if pv.ActiveEditsOnly.TotalProgEdits >= 0 {
-// 		activeCount += pv.ActiveEditsOnly.TotalProgEdits
-// 	}
-// 	pv.ActiveEditCount = activeCount
-// 	pv.InactiveEditCount = inactiveCount
-// 	return pv
-// }
+func createRaveURL(r Record) *RaveURL {
+	raveURL := new(RaveURL)
+	raveURL.URL = r.URL
+	raveURL.URLID = r.URLID
+	raveURL.URLPrefix = strings.Split(r.URL, ".")[0]
+	return raveURL
+}
 
-func (pv *ProjectVersion) fixUpNullValues() {
-	var activeCount = 0
-	var inactiveCount = 0
-	pv.ActiveEditsOnly = fixUpRecord(pv.ActiveEditsOnly)
-	if pv.InactiveEditsOnly != nil {
-		pv.InactiveEditsOnly = fixUpRecord(pv.InactiveEditsOnly)
-		if pv.InactiveEditsOnly.TotalProgEdits >= 0 {
-			// skip the null values
-			inactiveCount += pv.InactiveEditsOnly.TotalProgEdits
-		}
-		if pv.InactiveEditsOnly.TotalFieldEdits >= 0 {
-			// skip the null values
-			inactiveCount += pv.InactiveEditsOnly.TotalFieldEdits
-		}
+func createProject(r Record) *Project {
+	project := new(Project)
+	project.URL = r.URL
+	project.ProjectName = r.ProjectName
+	project.URLID = r.URLID
+	if r.SubjectCount.Valid {
+		project.SubjectCount = int(r.SubjectCount.Int64)
 	}
-	if pv.ActiveEditsOnly.TotalFieldEdits >= 0 {
-		activeCount += pv.ActiveEditsOnly.TotalFieldEdits
-	}
-	if pv.ActiveEditsOnly.TotalProgEdits >= 0 {
-		activeCount += pv.ActiveEditsOnly.TotalProgEdits
-	}
-	pv.ActiveEditCount = activeCount
-	pv.InactiveEditCount = inactiveCount
+	return project
 }
 
 func createProjectVersion(r Record) *ProjectVersion {
@@ -313,8 +210,5 @@ func createProjectVersion(r Record) *ProjectVersion {
 	projectVersion.CRFVersionID = r.CRFVersionID
 	projectVersion.LastVersion = r.LastVersion
 	projectVersion.URLID = r.URLID
-	if r.SubjectCount.Valid {
-		projectVersion.SubjectCount = int(r.SubjectCount.Int64)
-	}
 	return projectVersion
 }
