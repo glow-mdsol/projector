@@ -148,7 +148,7 @@ WHERE total_count = 0;
 }
 
 // export the study metrics, this is a map with a key matching the URL, and the projects as values
-func getStudyMetrics(db *sqlx.DB, pattern string) map[string][]ProjectVersion {
+func getStudyMetrics(db *sqlx.DB, pattern string) map[string]*RaveURL {
 	q := `WITH URL AS (
   SELECT id AS url_id
   FROM rave_url
@@ -199,6 +199,11 @@ func getStudyMetrics(db *sqlx.DB, pattern string) map[string][]ProjectVersion {
                     WHEN edit_check_name NOT LIKE 'SYS_%' THEN
                       total_check_executions
                     ELSE 0 END)                                             AS total_queries_prg
+            -- total OpenQuery check queries
+            , SUM(CASE
+                    WHEN actions LIKE '%OpenQuery%' THEN
+                      total_check_executions
+                    ELSE 0 END)                                             AS total_queries_open_query
             -- total field checks with OpenQuery Action
             , SUM(CASE
                     WHEN edit_check_name LIKE 'SYS_%' AND actions LIKE '%OpenQuery%'
@@ -262,6 +267,16 @@ func getStudyMetrics(db *sqlx.DB, pattern string) map[string][]ProjectVersion {
                     WHEN edit_check_name NOT LIKE 'SYS_%' AND change_count > 0
                       THEN 1
                     ELSE 0 END)                                             AS fired_change_prg
+            -- total count of open sys checks 
+            , SUM(CASE
+                    WHEN edit_check_name LIKE 'SYS_%' AND open_checks > 0
+                      THEN open_checks
+                    ELSE 0 END)                                             AS open_edits_sys
+            -- total count of open programmed checks 
+            , SUM(CASE
+                    WHEN edit_check_name NOT LIKE 'SYS_%' AND open_checks > 0
+                      THEN open_checks
+                    ELSE 0 END)                                             AS open_edits_prg
        FROM edit_check edt
               JOIN URL
                    ON URL.url_id = edt.url_id
@@ -301,7 +316,10 @@ SELECT (SELECT url from rave_url where rave_url.id = adt.url_id)            AS u
        total_not_fired_query_prg,
        total_queries,
        total_queries_fld,
-       total_queries_prg
+       total_queries_prg,
+       total_queries_open_query,
+       open_edits_sys,
+       open_edits_prg
 FROM AllData adt
        JOIN SubjectData sdt
             ON adt.project_id = sdt.project_id
@@ -313,25 +331,25 @@ ORDER BY URL, project_name, crf_version_id, check_status`
 	defer rows.Close()
 
 	// Status variable
-	urls := make(map[string][]ProjectVersion)
-	var projectVersion *ProjectVersion
+	urls := make(map[string]*RaveURL)
 	for rows.Next() {
 		var r Record
 		if err := rows.StructScan(&r); err != nil {
 			log.Fatal(err)
 		}
-		// First Row
+		urlPrefix := strings.Split(r.URL, ".")[0]
+		raveURL, ok := urls[urlPrefix]
+		if ok == false {
+			raveURL = createRaveURL(r)
+		}
+		project := raveURL.getProject(r.ProjectName)
+		if project == nil {
+			project = createProject(r)
+		}
+		pExt := true
+		projectVersion := project.getVersionByID(r.CRFVersionID)
 		if projectVersion == nil {
-			projectVersion = createProjectVersion(r)
-		} else if r.URL != projectVersion.URL || r.ProjectName != projectVersion.ProjectName || r.CRFVersionID != projectVersion.CRFVersionID {
-			// remove the .mdsol.com
-			// refresh the the inactive counts
-			prefix := strings.Split(projectVersion.URL, ".")[0]
-			// Data munging
-			projectVersion.fixUpNullValues()
-			// projectVersion.calculateInactiveCounts()
-			// store for posterity
-			urls[prefix] = append(urls[prefix], *projectVersion)
+			pExt = false
 			projectVersion = createProjectVersion(r)
 		}
 		if r.CheckStatus == "ACTIVEONLY" {
@@ -339,77 +357,86 @@ ORDER BY URL, project_name, crf_version_id, check_status`
 		} else {
 			projectVersion.InactiveEditsOnly = &r
 		}
-		//log.Println("Generated",r.CheckStatus,"for",r.ProjectName,"(",r.URL,")")
+		if pExt == false {
+			// add the project version
+			project.Versions = append(project.Versions, projectVersion)
+		}
+		if raveURL.getProject(r.ProjectName) == nil {
+			raveURL.Projects = append(raveURL.Projects, project)
+		}
+		urls[urlPrefix] = raveURL
 	}
-	// missing last loop
-	prefix := strings.Split(projectVersion.URL, ".")[0]
-	//projectVersion = fixUpNullValues(projectVersion)
-	//projectVersion = calculateInactiveCounts(projectVersion)
-	urls[prefix] = append(urls[prefix], *projectVersion)
+
+	// cleanup the input
+	for urlPrefix, raveURL := range urls {
+		log.Println("Fixing nulls for ", urlPrefix)
+		raveURL.fixupURL()
+	}
+
 	// Log output
 	log.Println("Generated metrics for ", len(urls), "URLs")
 	return urls
 }
 
 // Get the last version dataset for each of the URLs
-func getURLLastVersionData(db *sqlx.DB, urls map[string][]ProjectVersion) map[string][]LastProjectVersion {
-	last := make(map[string][]LastProjectVersion)
-	for url, versions := range urls {
-		versions := getLastVersionDataset(db, versions[0].URLID)
-		if len(versions) > 0 {
-			last[url] = versions
-		} else {
-			log.Println("No project versions found for", url)
-		}
-	}
-	return last
-}
+//func getURLLastVersionData(db *sqlx.DB, urls map[string][]ProjectVersion) map[string][]LastProjectVersion {
+//	last := make(map[string][]LastProjectVersion)
+//	for url, versions := range urls {
+//		versions := getLastVersionDataset(db, versions[0].URLID)
+//		if len(versions) > 0 {
+//			last[url] = versions
+//		} else {
+//			log.Println("No project versions found for", url)
+//		}
+//	}
+//	return last
+//}
 
 // get the last version dataset
-func getLastVersionDataset(db *sqlx.DB, URLID int) []LastProjectVersion {
-	// Note we only pull out the checks that can register (ie with OpenQuery)
-	q := `WITH SET AS (SELECT
-  project_last_version.project_id,
-  COUNT(*) AS total_count,
-  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' THEN 1 ELSE 0 END) AS fld_total,
-  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND query_count > 0 THEN 1 ELSE 0 END) AS fld_total_fired,
-  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND query_count = 0 THEN 1 ELSE 0 END) AS fld_total_not_fired,
-  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND change_count = 0 THEN 1 ELSE 0 END) AS fld_no_change_count,
-  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND change_count > 0 THEN 1 ELSE 0 END) AS fld_change_count,
-  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' THEN 1 ELSE 0 END) AS prg_total,
-  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND query_count > 0 THEN 1 ELSE 0 END) AS prg_total_fired,
-  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND query_count = 0 THEN 1 ELSE 0 END) AS prg_total_not_fired,
-  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND change_count = 0 THEN 1 ELSE 0 END) AS prg_no_change_count,
-  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND change_count > 0 THEN 1 ELSE 0 END) AS prg_change_count
-FROM edit_check
-  INNER JOIN project_last_version
-    ON edit_check.project_id = project_last_version.project_id AND
-       edit_check.crf_version_id = project_last_version.crf_version_id
-WHERE url_id = $1 AND actions LIKE '%OpenQuery%' AND is_active = 1
-GROUP BY project_last_version.project_id
-)
-SELECT project.project_name,
-  project_last_version.crf_version_id,
-  project_last_version.subject_count,
-  SET.* FROM SET
-  JOIN project ON SET.project_id = project.id
-  JOIN project_last_version ON project.id = project_last_version.project_id
-ORDER BY project.project_name;
-`
-	rows, err := db.Queryx(q, URLID)
-	if err != nil {
-		log.Fatal("Query failed: ", err)
-	}
-	defer rows.Close()
-	projectVersions := []LastProjectVersion{}
-	for rows.Next() {
-		var r LastProjectVersion
-		if err := rows.StructScan(&r); err != nil {
-			log.Fatal(err)
-		}
-		// Add the percentages
-		r.calculatePercentages()
-		projectVersions = append(projectVersions, r)
-	}
-	return projectVersions
-}
+//func getLastVersionDataset(db *sqlx.DB, URLID int) []LastProjectVersion {
+//	// Note we only pull out the checks that can register (ie with OpenQuery)
+//	q := `WITH SET AS (SELECT
+//  project_last_version.project_id,
+//  COUNT(*) AS total_count,
+//  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' THEN 1 ELSE 0 END) AS fld_total,
+//  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND query_count > 0 THEN 1 ELSE 0 END) AS fld_total_fired,
+//  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND query_count = 0 THEN 1 ELSE 0 END) AS fld_total_not_fired,
+//  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND change_count = 0 THEN 1 ELSE 0 END) AS fld_no_change_count,
+//  SUM(CASE WHEN edit_check_name LIKE 'SYS_%' AND change_count > 0 THEN 1 ELSE 0 END) AS fld_change_count,
+//  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' THEN 1 ELSE 0 END) AS prg_total,
+//  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND query_count > 0 THEN 1 ELSE 0 END) AS prg_total_fired,
+//  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND query_count = 0 THEN 1 ELSE 0 END) AS prg_total_not_fired,
+//  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND change_count = 0 THEN 1 ELSE 0 END) AS prg_no_change_count,
+//  SUM(CASE WHEN edit_check_name NOT LIKE 'SYS_%' AND change_count > 0 THEN 1 ELSE 0 END) AS prg_change_count
+//FROM edit_check
+//  INNER JOIN project_last_version
+//    ON edit_check.project_id = project_last_version.project_id AND
+//       edit_check.crf_version_id = project_last_version.crf_version_id
+//WHERE url_id = $1 AND actions LIKE '%OpenQuery%' AND is_active = 1
+//GROUP BY project_last_version.project_id
+//)
+//SELECT project.project_name,
+//  project_last_version.crf_version_id,
+//  project_last_version.subject_count,
+//  SET.* FROM SET
+//  JOIN project ON SET.project_id = project.id
+//  JOIN project_last_version ON project.id = project_last_version.project_id
+//ORDER BY project.project_name;
+//`
+//	rows, err := db.Queryx(q, URLID)
+//	if err != nil {
+//		log.Fatal("Query failed: ", err)
+//	}
+//	defer rows.Close()
+//	projectVersions := []LastProjectVersion{}
+//	for rows.Next() {
+//		var r LastProjectVersion
+//		if err := rows.StructScan(&r); err != nil {
+//			log.Fatal(err)
+//		}
+//		// Add the percentages
+//		r.calculatePercentages()
+//		projectVersions = append(projectVersions, r)
+//	}
+//	return projectVersions
+//}
