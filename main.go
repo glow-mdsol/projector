@@ -92,8 +92,6 @@ func main() {
 		// Get the Study Metrics
 		log.Println("Retrieving URL Metrics")
 		studyMetrics := getStudyMetrics(dbConn, urlPattern)
-		// Get the LastVersionData
-		lastVersions := getURLLastVersionData(dbConn, studyMetrics)
 		// Subject Counts
 		log.Println("Writing Subject Counts")
 		writeSubjectCounts(subjectCounts, workbook)
@@ -105,7 +103,7 @@ func main() {
 		writeStudyMetrics(studyMetrics, workbook)
 		// Last Project Versions
 		log.Println("Writing Last Project Version Data")
-		writeLastProjectVersions(lastVersions, *threshold, workbook)
+		writeLastProjectVersions(studyMetrics, *threshold, workbook)
 	}
 	// make up the prefix using the range of patterns, removing the extraneous domains
 	var prefixes []string
