@@ -15,3 +15,19 @@ Intended for use with BodyCheck derived data
 2017/07/24 01:35:16 Writing Unfired Edits
 2017/07/24 01:35:16 Writing Study Metrics
 ```
+
+## Pattern
+
+1. Get the list of URLs that match the pattern
+2. For each matching URL
+    1. Get the Subject Count -> write to sheet
+    2. Get the Projects and for each Project (sorted by name)
+        1. Get the ProjectVersions and for each ProjectVersion (sorted by CRFVersion)
+            1. Get the Unused Edits
+                1. With OpenQuery Action -> write to sheet
+                2. Without OpenQuery Action -> write to sheet
+            3. Get the Edit check counts
+                1. write to sheet, ordered by CRF Version
+        2. For the last ProjectVersion
+            1. Write the summarised counts to the last project sheet
+        3. Generate aggregate and average counts for last versions -> write to sheet

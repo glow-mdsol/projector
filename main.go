@@ -3,14 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/tealeg/xlsx"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/tealeg/xlsx"
-	"os"
-	"strings"
 )
 
 type arrayFlags []string
@@ -34,6 +34,78 @@ func getURLs(db *sqlx.DB) {
 	}
 }
 
+// load the queries, versions, etc
+func loadProject(db *sqlx.DB, urlID int, project *Project) {
+	// load in the UnusedQueries
+	project.loadUnusedQueries(db)
+	// get the versions
+	projectVersions := getProjectVersions(db, project.ProjectID)
+	for _, projectVersion := range projectVersions {
+		projectVersion.getActivityCounts(db)
+		projectVersion.getMetrics(db)
+	}
+	// ensure the versions are ordered appropriately
+	project.Versions = orderVersions(projectVersions)
+}
+
+// fluff out a project definition
+func expandProject(db *sqlx.DB, raveURL RaveURL, project *Project, subjectCounts []SubjectCount) {
+	log.Println("Expanding ", project.ProjectName)
+	// TODO: Concurrency
+	loadProject(db, raveURL.URLID, project)
+	for _, counts := range subjectCounts {
+		if counts.ProjectID == project.ProjectID {
+			project.SubjectCount = counts
+		}
+	}
+}
+
+// process a RaveURL dataset
+func processRaveURL(db *sqlx.DB, raveURL RaveURL) {
+	workbook := xlsx.NewFile()
+	//if !doesPatternMatch(urlPattern, dbConn) {
+	//	log.Println("No matching URLs for", urlPattern)
+	//	continue
+	//}
+	log.Println("Processing Rave URL ", raveURL.URL())
+	// get the projects
+	projects := getProjects(db, raveURL.URLID)
+	log.Println("Loaded", len(projects), "Projects")
+	// sort the projects
+	projects = orderProjects(projects)
+	// load the subjectCounts
+	subjectCounts := getSubjectCounts(db, raveURL.URLID)
+	// Get the project versions
+	for _, project := range projects {
+		// can we parallelise this?
+		expandProject(db, raveURL, project, subjectCounts)
+	}
+	// WRITE OUT THE SUBJECT COUNTS
+	writeSubjectCount(raveURL.URL(), projects, workbook)
+	// Process useless edits project by project
+	for _, project := range projects {
+		// OpenQuery
+		writeUselessEdits(project.ProjectName, project.UnusedWithOpenQuery, OpenQuery, workbook)
+		// Not OpenQuery
+		writeUselessEdits(project.ProjectName, project.Unused, WithoutOpenQuery, workbook)
+		// versions
+		writeStudyMetricsForProject(raveURL.URLPrefix(), project, workbook)
+		// last version
+		writeLastStudyMetricsForProject(raveURL.URLPrefix(), project, workbook)
+
+	}
+	// aggregated counts
+	writeSummaryCounts(projects, workbook)
+
+	// write to disk
+	filename := fmt.Sprintf("%s_%s.xlsx", raveURL.URLPrefix(), time.Now().Format("2006-01-02"))
+
+	err := workbook.Save(filename)
+	if err != nil {
+		log.Println("Error: ", err)
+	}
+}
+
 func main() {
 	var patternsArray, raveUrls arrayFlags
 	flag.Var(&patternsArray, "pattern", "Supply the URL patterns")
@@ -43,8 +115,8 @@ func main() {
 	dbName := flag.String("dbname", "editsfive", "Database Name")
 	dbUser := flag.String("user", "edits", "Database User")
 	dbPass := flag.String("password", "apple01", "Database Password")
-	fileName := flag.String("output", "report", "Output File Name")
-	threshold := flag.Int("threshold", 10, "Threshold for Reporting")
+	//fileName := flag.String("output", "report", "Output File Name")
+	//threshold := flag.Int("threshold", 10, "Threshold for Reporting")
 	flag.Parse()
 	if *dumpURLs == false && (len(patternsArray) == 0 && len(raveUrls) == 0) {
 		log.Fatal("Need to specify the patterns or url")
@@ -64,58 +136,30 @@ func main() {
 		getURLs(dbConn)
 		os.Exit(0)
 	}
-	workbook := xlsx.NewFile()
 	if len(raveUrls) != 0 {
-		for _, raveUrl := range raveUrls {
-			if !strings.HasSuffix(raveUrl, ".mdsol.com") {
+		for _, raveURL := range raveUrls {
+			if !strings.HasSuffix(raveURL, ".mdsol.com") {
 				// if we don't end with mdsol.com, then set it
-				patternsArray.Set(fmt.Sprintf("%s.mdsol.com", raveUrl))
+				patternsArray.Set(fmt.Sprintf("%s.mdsol.com", raveURL))
 			} else {
-				patternsArray.Set(raveUrl)
+				patternsArray.Set(raveURL)
 			}
 
 		}
 	}
 	for _, urlPattern := range patternsArray {
-		if !doesPatternMatch(urlPattern, dbConn) {
+		matchingURLs, err := GetURLsThatMatch(dbConn, urlPattern)
+		if err != nil {
+			continue
+		}
+		if len(matchingURLs) == 0 {
 			log.Println("No matching URLs for", urlPattern)
 			continue
 		}
-		log.Println("Processing URL Pattern ", urlPattern)
-		// Get the Subject Counts
-		log.Println("Retrieving Subject Counts")
-		subjectCounts := getSubjectCounts(dbConn, urlPattern)
-		// Get the unfired edits
-		log.Println("Retrieving Unfired Edits")
-		uselessEdits := getUselessEdits(dbConn, urlPattern)
-		// Get the Study Metrics
-		log.Println("Retrieving URL Metrics")
-		studyMetrics := getStudyMetrics(dbConn, urlPattern)
-		// Get the LastVersionData
-		lastVersions := getURLLastVersionData(dbConn, studyMetrics)
-		// Subject Counts
-		log.Println("Writing Subject Counts")
-		writeSubjectCounts(subjectCounts, workbook)
-		// Useless Edits
-		log.Println("Writing Unfired Edits")
-		writeUselessEdits(uselessEdits, workbook)
-		// Study Metrics
-		log.Println("Writing Study Metrics")
-		writeStudyMetrics(studyMetrics, workbook)
-		// Last Project Versions
-		log.Println("Writing Last Project Version Data")
-		writeLastProjectVersions(lastVersions, *threshold, workbook)
-	}
-	// make up the prefix using the range of patterns, removing the extraneous domains
-	var prefixes []string
-	for _, prefix := range patternsArray {
-		if strings.HasSuffix(prefix, ".mdsol.com") {
-			prefixes = append(prefixes, strings.Split(prefix, ".")[0])
-		} else {
-			prefixes = append(prefixes, prefix)
+
+		for _, raveURL := range matchingURLs {
+			processRaveURL(dbConn, raveURL)
 		}
+
 	}
-	prefix := strings.Join(prefixes, "_")
-	filename := fmt.Sprintf("%s_%s_%s.xlsx", prefix, *fileName, time.Now().Format("2006-01-02"))
-	workbook.Save(filename)
 }
